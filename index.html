@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#000000">
 <title>Sorting Hat</title>
 <style>
-:root{--ink:#8b84a3;--dim:#3a3548;--gold:#a8832f}
+:root{color-scheme:dark;--ink:#8b84a3;--dim:#3a3548;--gold:#a8832f}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:Georgia,serif}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:calc(env(safe-area-inset-top) + 44px) 14px calc(env(safe-area-inset-bottom) + 150px)}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding-block:calc(env(safe-area-inset-top,0px) + 44px) calc(env(safe-area-inset-bottom,0px) + 150px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 button,select,input{font:inherit}
 #big{background:transparent;color:var(--gold);border:2px solid var(--dim);border-radius:24px;width:min(80vw,340px);padding:38px 12px;font-size:1.5rem}
 #big:active{background:#111}
@@ -31,6 +31,11 @@ body.caps #cap{display:block}
 .hbtn{border:2px solid var(--dim);border-radius:16px;padding:22px 6px;font-size:1.1rem;background:transparent;color:var(--ink)}
 .hbtn:active{filter:brightness(1.6)}
 #table{width:min(94vw,420px)}
+#guestRow{margin:10px 0 0;font-size:.9rem;color:var(--ink);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+#guestRow select{background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:8px;padding:6px;max-width:55vw}
+.panel textarea{width:100%;background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:8px;padding:6px;font-size:.8rem}
+.panel ul{list-style:none;margin:6px 0;padding:0}
+.panel li{padding:4px 0;border-bottom:1px solid #1a1822}
 .card{border:1px solid var(--dim);border-radius:14px;padding:8px 10px;min-height:70px}
 .card h3{margin:0 0 4px;font-size:.9rem;font-weight:normal}
 .card ul{margin:0;padding:0;list-style:none;font-size:.95rem}
@@ -38,7 +43,7 @@ body.caps #cap{display:block}
 details{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:10px;text-align:right;z-index:5}
 summary{list-style:none;cursor:pointer;color:var(--dim);font-size:1.4rem;padding:4px 8px}
 summary::-webkit-details-marker{display:none}
-.panel{background:#0b0a10;border:1px solid var(--dim);border-radius:12px;padding:12px;margin-top:6px;text-align:left;width:min(88vw,320px);font-size:.95rem;color:var(--ink)}
+.panel{max-height:75vh;overflow:auto;background:#0b0a10;border:1px solid var(--dim);border-radius:12px;padding:12px;margin-top:6px;text-align:left;width:min(88vw,320px);font-size:.95rem;color:var(--ink)}
 .panel label,.panel div{display:block;margin:8px 0}
 .panel select{width:100%;background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:8px;padding:6px}
 .panel button{background:transparent;color:var(--ink);border:1px solid var(--dim);border-radius:8px;padding:6px 10px;margin:2px}
@@ -52,12 +57,16 @@ summary::-webkit-details-marker{display:none}
     <label><input type="checkbox" id="capChk"> Show captions</label>
     <label>Hat voice <select id="voiceSel"></select></label>
     <div><button id="voiceTest">Test voice</button><button id="scoreBtn">Speak scores</button></div>
+    <details id="guestBox"><summary style="font-size:.95rem;color:var(--ink);padding:4px 0;cursor:pointer">Guest surveys (<span id="gCount">0</span>)</summary>
+      <textarea id="gPaste" rows="4" placeholder="Paste survey codes here (HAT1.…), several at once is fine"></textarea>
+      <div><button id="gImport">Import</button> <span id="gMsg" style="font-size:.85rem"></span></div>
+      <ul id="gList"></ul></details>
     <div><button id="clearBtn">Clear table</button><button id="stopBtn">Stop / reset</button></div>
     <div id="voiceNote" style="font-size:.8rem;color:var(--dim)"></div>
   </div>
 </details>
 
-<div id="picker"><h2 id="pickTitle"></h2><div class="grid" id="pickGrid"></div></div>
+<div id="picker"><h2 id="pickTitle"></h2><div class="grid" id="pickGrid"></div><div id="guestRow"><span>Survey:</span><select id="guestSel" aria-label="Survey answers to use"></select></div></div>
 <div id="table"><div class="grid" id="tableGrid"></div></div>
 <button id="big">Wake the Hat</button>
 <div id="cap"></div>
@@ -116,6 +125,21 @@ const DOUBTS = [
   "I thought I had decided, but now I'm not sure at all. Give me a minute.",
   "Let me look at that from another angle. Tilt your head. Not that much!"
 ];
+const CQ = [   // the Hat's comment on each survey choice question, by house letter
+  {G:"you flung that mysterious door open without a second thought. My brim is trembling.",
+   H:"you would bring a friend to the spooky door. Smart. Sweet. Probably smells of biscuits.",
+   R:"you would study the door before touching it. I love a nerd. Said with deep affection.",
+   S:"you would hunt for a sneaky shortcut around that door. Rules are more like suggestions, hmm?"},
+  {G:"when someone is left out, you march over and invite them in, loudly. Subtle as a troll, kind as a unicorn.",
+   H:"when someone is left out, you sit with them. That's the best kind of magic, and it's free.",
+   R:"when someone is left out, you work out how to help. A thinker AND a helper. Rare.",
+   S:"when someone is left out, you quietly fix it behind the scenes. A hero in the shadows. Very you."},
+  {G:"you would love to be called brave. Funny, so did I, until I became a hat.",
+   H:"you want to be known as kind. That's the strongest magic of all.",
+   R:"you want to be called clever. Well. I'm a hat. I have opinions on that.",
+   S:"you want to be known for never giving up. I can feel the determination from here."}
+];
+const LEADS = ["A little bird told me that ","Your survey whispered to me that ","I have it on good authority that "];
 const NOISY  = ["Oh dear. I can't hear very well with all this noise. I shall wait until it is quieter.",
                 "Goodness me, my brim is ringing. I can't hear a thing. I'll wait for a little hush."];
 const RESUME = ["Ah, that's better. Now, where was I?","Mmm, much better. Where were we?"];
@@ -123,6 +147,7 @@ const RESUME = ["Ah, that's better. Now, where was I?","Mmm, much better. Where 
 const $ = id => document.getElementById(id);
 const FAST = location.search.includes("fast");               // test mode: shrinks waits
 const sleep = ms => new Promise(r => setTimeout(r, FAST ? ms/20 : ms));
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
 const pickOne = a => a[Math.floor(Math.random()*a.length)];
 const setStatus = t => $("status").textContent = t || "";
 const cap = t => { $("cap").textContent = t; };
@@ -311,6 +336,66 @@ async function getAnswer(n, parse, reprompts, withName=false){
   hideHost(); return null;
 }
 
+/* ================= GUEST SURVEYS ================= */
+const guests = { get(){ try{return JSON.parse(localStorage.getItem("hatGuests")||"[]")}catch{return []} },
+                 set(v){ try{localStorage.setItem("hatGuests",JSON.stringify(v))}catch{} } };
+const clip = (s,n) => String(s||"").replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim().slice(0,n);
+function decodeCode(code){
+  try{
+    let b = code.replace(/^HAT1\./,"").replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4) b+="=";
+    const o = JSON.parse(decodeURIComponent(escape(atob(b))));
+    if(!o || !clip(o.n,20)) return null;
+    return { n:clip(o.n,20), f:clip(o.f,30), a:clip(o.a,30), g:clip(o.g,40), p:clip(o.p,40),
+             c:String(o.c||"").replace(/[^GHRS]/g,"").slice(0,3) };
+  }catch{ return null; }
+}
+function importCodes(text){
+  const found = text.match(/HAT1\.[A-Za-z0-9_-]+/g) || [], all = guests.get(); let added=0;
+  for(const c of found){ const g=decodeCode(c); if(!g) continue;
+    const i=all.findIndex(x=>x.n.toLowerCase()===g.n.toLowerCase()); if(i>=0) all[i]=g; else { all.push(g); added++; } }
+  guests.set(all); renderGuests(); return {found:found.length, added};
+}
+function twoTap(btn, armed, fn){                 // confirm() is blocked in some viewers, so confirm in the button itself
+  const orig = btn.textContent; let on=false, t;
+  btn.onclick = () => { if(!on){ on=true; btn.textContent=armed; t=setTimeout(()=>{on=false;btn.textContent=orig},3000); }
+                        else { clearTimeout(t); on=false; btn.textContent=orig; fn(); } };
+}
+function renderGuests(){
+  const all=guests.get(); $("gCount").textContent=all.length; const ul=$("gList"); ul.innerHTML="";
+  all.forEach((g,i)=>{ const li=document.createElement("li"); li.textContent=g.n+" "; li.style.cursor="pointer";
+    const x=document.createElement("span"); x.textContent="(tap to remove)"; x.style.color="var(--dim)"; li.appendChild(x);
+    let on=false,t; li.onclick=()=>{ if(!on){ on=true; x.textContent="tap again to remove"; t=setTimeout(()=>{on=false;x.textContent="(tap to remove)"},3000); }
+      else { clearTimeout(t); const a=guests.get(); a.splice(i,1); guests.set(a); renderGuests(); } };
+    ul.appendChild(li); });
+}
+const lev = (a,b) => { const d=[...Array(b.length+1).keys()]; for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i;
+  for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } } return d[b.length]; };
+const key = s => s.toLowerCase().replace(/[^a-z]/g,"");
+function matchGuest(spoken){                                   // index into guests.get(), or -1
+  const k=key(spoken.split(" ")[0]||""); if(!k) return -1;
+  const all=guests.get(); let best=-1, bd=99;
+  all.forEach((g,i)=>{ const gk=key(g.n.split(" ")[0]||""); if(!gk) return;
+    const d = gk===k ? 0 : (k.length>=4 && gk.length>=4 && lev(gk,k)<=1) ? 1 : (k.length>=3 && gk.startsWith(k)) ? 1 : 99;
+    if(d<bd){ bd=d; best=i; } });
+  return bd<99 ? best : -1;
+}
+function suggest(g){                                           // house the survey leans towards, or null on a tie
+  if(!g || !g.c) return null; const t={G:0,H:0,R:0,S:0}; for(const ch of g.c) t[ch]++;
+  const r=Object.entries(t).sort((a,b)=>b[1]-a[1]); return r[0][1]>0 && r[0][1]>r[1][1] ? r[0][0] : null;
+}
+// Lines the Hat can say about this particular guest
+function personalLines(g, house){
+  if(!g) return {lines:[], target:null};
+  const L=[];
+  if(g.f) L.push(pick([`Hmm, I smell ${g.f}. Did you have ${g.f} for breakfast, {n}? Don't lie to a hat.`, `Ah, ${g.f}! A person of taste. A hat can tell these things.`]));
+  if(g.a) L.push(pick([`Your favourite animal is ${g.a}. Of course it is. It suits you perfectly.`, `Mm, ${g.a}. I can see a little bit of ${g.a} in your eyes, {n}. Or is that just the light?`]));
+  if(g.g) L.push(pick([`I hear you are rather good at ${g.g}. Hmm. That's a secret weapon, that is.`, `Ah, ${g.g}! I have a great many opinions about ${g.g}, and I'm keeping every one of them to myself.`]));
+  if(g.p) L.push(pick([`And if you could have any magic power, you'd choose ${g.p}. Dangerous. Wonderful. Please don't test it on me.`, `Your wish is ${g.p}. That's quite a wish, {n}. I've heard worse. Mostly from goats.`]));
+  const mine=[], others=[];
+  [...g.c].forEach((ch,i)=>{ const q=CQ[i]&&CQ[i][ch]; if(!q) return; const t=pick(LEADS)+q; (ch===house?mine:others).push(t); });
+  return { lines: shuffle(L.concat(others)), target: mine.length ? pick(mine) : null };
+}
+
 /* ================= HOUSE TABLE ================= */
 const store = { get(){ try{return JSON.parse(localStorage.getItem("sortedKids")||"[]")}catch{return []} },
                 set(v){ try{localStorage.setItem("sortedKids",JSON.stringify(v))}catch{} } };
@@ -322,17 +407,25 @@ function renderTable(){
     const h=document.createElement("h3"); h.style.color=H[k].color==="#8a7420"?"#c9a82e":H[k].color; h.textContent=`${H[k].name} (${mem.length})`; d.appendChild(h);
     const ul=document.createElement("ul");
     mem.forEach(m=>{ const li=document.createElement("li"); li.textContent=m.name; li.title="Tap to remove";
-      li.onclick=()=>{ if(confirm(`Remove ${m.name} from ${H[k].name}?`)){ const a=store.get(); a.splice(m.i,1); store.set(a); renderTable(); } };
+      let on=false,t; li.onclick=()=>{ if(!on){ on=true; li.textContent=`${m.name}: tap again to remove`; t=setTimeout(()=>{on=false;li.textContent=m.name},3000); }
+        else { clearTimeout(t); const a=store.get(); a.splice(m.i,1); store.set(a); renderTable(); } };
       ul.appendChild(li); });
     d.appendChild(ul); g.appendChild(d);
   });
 }
-function pickHouse(who){                                   // host chooses the house on screen
+function pickHouse(who, matched){                          // host chooses the house (and which survey to use) on screen
   return new Promise(res=>{
     $("pickTitle").textContent=`Which house for ${who}?`;
+    const all=guests.get(), sel=$("guestSel"); sel.innerHTML="";
+    const o0=document.createElement("option"); o0.value="-1"; o0.textContent="No survey"; sel.appendChild(o0);
+    all.forEach((g,i)=>{ const o=document.createElement("option"); o.value=String(i); o.textContent=g.n; sel.appendChild(o); });
+    sel.value=String(matched); $("guestRow").style.display = all.length ? "flex" : "none";
     const g=$("pickGrid"); g.innerHTML="";
-    Object.keys(H).forEach(k=>{ const b=document.createElement("button"); b.className="hbtn"; b.textContent=H[k].name; b.style.borderColor=H[k].color;
-      b.onclick=()=>{ $("picker").style.display="none"; res(k); }; g.appendChild(b); });
+    const btns={};
+    Object.keys(H).forEach(k=>{ const b=document.createElement("button"); b.className="hbtn"; b.style.borderColor=H[k].color; btns[k]=b;
+      b.onclick=()=>{ $("picker").style.display="none"; res({house:k, guest: all[+sel.value] || null}); }; g.appendChild(b); });
+    const label=()=>{ const s=suggest(all[+sel.value]); Object.keys(H).forEach(k=>{ btns[k].textContent=(s===k?"★ ":"")+H[k].name; }); };
+    sel.onchange=label; label();
     $("picker").style.display="block";
   });
 }
@@ -340,7 +433,7 @@ function pickHouse(who){                                   // host chooses the h
 /* ================= THE SHOW ================= */
 let name="", house=null, busy=false, museQueued=0;
 const showMuse = () => { $("museBtn").textContent = museQueued ? `💭 Keep musing (${museQueued})` : "💭 Keep musing"; };
-const fill = t => t.replace(/\{n\}/g, name);
+const fill = t => t.replace(/\{n\}/g, () => name);
 const pick = pickOne;
 async function getName(){
   let cand=null;
@@ -362,20 +455,22 @@ async function runChild(){
   $("bar").style.display="flex"; magic();
   await sayChain([{t:"Ahhh. At last, a head beneath me. Hmmmm…",s:"slow"},{t:"Tell me, young wizard, what is your name?"}]);
   name = (await getName()) || "Young Wizard";
-  const choosing = pickHouse(name);                         // host picks while the Hat is talking
+  const choosing = pickHouse(name, matchGuest(name));                         // host picks while the Hat is talking
   await sayChain([{t:`${name}.`,s:"slow"},{t:"Splendid. Now keep very still while I think."}]);
-  house = await choosing;
+  const picked = await choosing; house = picked.house;
+  if(picked.guest) name = picked.guest.n;                       // use the spelling from their survey
+  const P = personalLines(picked.guest, house), guest = picked.guest;
   const decoy = pick(Object.keys(H).filter(k=>k!==house));
   const n1 = pick(NEUTRAL), n2 = pick(NEUTRAL.filter(x=>x!==n1));
   const seg = [
-    [{t:`Hmmmm… ${name}. Yes. Yes, a head. And a very interesting one.`,s:"slow"}, {t:n1}],
-    [{t:"Let me see where you might belong…",s:"whisper"}, {t:pick(H[decoy].hints)}, {t:`Hmm. A touch of ${H[decoy].name}. Tempting. Very tempting.`,s:"whisper"}, {t:"But hold on, hold on…",s:"whisper"}],
-    [{t:"Oh! What's this?"}, {t:pick(H[house].hints)}, {t:n2}, {t:"Ohhh. That changes things. That changes everything."}],
+    [{t: guest ? `Hmmmm… ${name}. Oh yes. I have heard whispers about you.` : `Hmmmm… ${name}. Yes. Yes, a head. And a very interesting one.`,s:"slow"}, {t:P.lines.shift()||n1}],
+    [{t:"Let me see where you might belong…",s:"whisper"}, {t:pick(H[decoy].hints)}, {t:`Hmm. A touch of ${H[decoy].name}. Tempting. Very tempting.`,s:"whisper"}, {t:"But hold on, hold on…",s:"whisper"}, ...(P.lines.length?[{t:P.lines.shift()}]:[])],
+    [{t:"Oh! What's this?"}, {t:pick(H[house].hints)}, {t:P.target||P.lines.shift()||n2}, {t:"Ohhh. That changes things. That changes everything."}],
     [{t:"Hm hm hm. Yes. No. Yes… Oh! I know exactly where to put you.",s:"slow"}, {t:"Better be…",s:"slow"}, {t:H[house].name.toUpperCase()+"!",s:"excited"}]
   ];
   murmur();
   const used = new Set(), fresh = pool => { const left=pool.filter(x=>!used.has(x)), t=pick(left.length?left:pool); used.add(t); return t; };
-  const extraMuse = () => [{t:fresh(TANGENTS)},{t:fresh(H[pick(Object.keys(H))].hints)},{t:fresh(DOUBTS),s:"whisper"}];
+  const extraMuse = () => [{t:P.lines.length?P.lines.shift():fresh(TANGENTS)},{t:fresh(H[pick(Object.keys(H))].hints)},{t:fresh(DOUBTS),s:"whisper"}];
   museQueued = 0; skipSay = false; showMuse();
   $("museBtn").style.display="inline-block"; $("revealBtn").style.display="inline-block";
   for(let i=0; i<seg.length-1 && !skipSay; i++){                  // every segment except the reveal
@@ -414,11 +509,12 @@ $("voiceSel").onchange = e => { voice = speechSynthesis.getVoices().find(v=>v.na
 $("voiceTest").onclick = async () => { await unlock(); say("Hmmmm. Difficult. Very difficult. I see plenty of courage, and not a bad mind either."); };
 $("scoreBtn").onclick = async () => { await unlock(); const all=store.get(); const t=k=>all.filter(a=>a.house===k).length;
   sayChain([{t:"House points, as they stand."},...Object.keys(H).map(k=>({t:`${H[k].name}: ${t(k)}.`})),{t:all.length?"Carry on, wizards.":"Nobody has been sorted yet."}]); };
-$("clearBtn").onclick = () => { if(confirm("Clear the whole house table on this phone?")){ store.set([]); renderTable(); } };
+twoTap($("clearBtn"), "Tap again to clear", () => { store.set([]); renderTable(); });
+$("gImport").onclick = () => { const r=importCodes($("gPaste").value); $("gMsg").textContent = r.found ? `Read ${r.found} code${r.found>1?"s":""}.` : "No codes found."; if(r.found) $("gPaste").value=""; };
 $("stopBtn").onclick = () => { try{speechSynthesis.cancel()}catch{} location.reload(); };
 micOn = !!SR; $("micChk").checked = micOn;
 if(!SR) setStatus("No mic support here. Type names on the phone.");
-renderTable();
+renderTable(); renderGuests();
 </script>
 </body>
 </html>
