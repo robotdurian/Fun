@@ -1,6 +1,11 @@
 # Sorting Hat — Simple Party Edition
 
-**Before the party:** send guests `survey.html` (8 fun questions: name, food, animal, good-at, magic power, plus 3 choices). It produces a short code `HAT1.…` the parent texts back. Paste codes into ⚙ → Guest surveys. When a child says their name the Hat matches it (tolerates mishearing), shows the match on the house screen (change it with the Survey dropdown; ★ marks the house their choices lean towards) and weaves their answers into the musing, including "Keep musing" extras.
+**Before the party:** send guests these questions by any means (text, email, in person):
+1. What should the Hat call you? 2. Favourite food? 3. Favourite animal? 4. What are you really good at? 5. What magic power would you pick?
+6. A mysterious glowing door: fling it open / grab a friend first / read the clues / find a shortcut?
+7. Someone is left out: invite them in loudly / sit with them / work out why and help / quietly fix it?
+8. Friends should say you are: so brave / so kind / so clever / never give up?
+Type each guest's answers into ⚙ → Guests. When a child says their name the Hat matches it (tolerates mishearing), shows the match on the house screen (change it with the Survey dropdown; ★ marks the house their choices lean towards) and weaves their answers into the musing, including "Keep musing" extras.
 
 **Flow (audio-first, run from the host's phone, speaker out):**
 1. Child puts on the hat. Host taps **Wake the Hat** (or **Next child**).

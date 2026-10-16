@@ -31,6 +31,19 @@ body.caps #cap{display:block}
 .hbtn{border:2px solid var(--dim);border-radius:16px;padding:22px 6px;font-size:1.1rem;background:transparent;color:var(--ink)}
 .hbtn:active{filter:brightness(1.6)}
 #table{width:min(94vw,420px)}
+#guestView{display:none;position:fixed;inset:0;z-index:20;background:#000;overflow:auto;padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 40px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#guestView.open{display:block}
+.gwrap{max-width:460px;margin:0 auto}
+.gwrap h2{font-weight:normal;font-size:1.2rem;margin:0 0 12px;color:var(--gold)}
+#gForm label{display:block;margin:10px 0;font-size:.9rem}
+#gForm input,#gForm select{display:block;width:100%;margin-top:4px;background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:10px;padding:10px;font-size:16px}
+.grow{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.grow button,.gitem button{background:transparent;color:var(--ink);border:1px solid var(--dim);border-radius:10px;padding:10px 14px}
+#gSave{border-color:var(--gold);color:var(--gold)}
+#gMsg{min-height:1.2em;font-size:.85rem;color:var(--ink)}
+#gList{list-style:none;margin:10px 0;padding:0}
+.gitem{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #1a1822}
+.gitem span{flex:1;min-width:0;overflow-wrap:anywhere}
 #guestRow{margin:10px 0 0;font-size:.9rem;color:var(--ink);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
 #guestRow select{background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:8px;padding:6px;max-width:55vw}
 .panel textarea{width:100%;background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:8px;padding:6px;font-size:.8rem}
@@ -50,6 +63,22 @@ summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
+<div id="guestView" role="dialog" aria-label="Guest answers"><div class="gwrap">
+  <h2>Guest answers</h2>
+  <form id="gForm" autocomplete="off">
+    <label>Name<input id="gN" maxlength="20" required></label>
+    <label>Favourite food<input id="gF" maxlength="30"></label>
+    <label>Favourite animal<input id="gA" maxlength="30"></label>
+    <label>Really good at<input id="gG" maxlength="40"></label>
+    <label>Magic power they'd pick<input id="gP" maxlength="40"></label>
+    <label>Mysterious door<select id="gC0"><option value="-">(skip)</option><option value="G">Flings it open</option><option value="H">Grabs a friend first</option><option value="R">Reads the clues</option><option value="S">Finds a shortcut</option></select></label>
+    <label>Someone left out<select id="gC1"><option value="-">(skip)</option><option value="G">Invites them in, loudly</option><option value="H">Sits with them</option><option value="R">Works out why and helps</option><option value="S">Quietly fixes it</option></select></label>
+    <label>Friends should say<select id="gC2"><option value="-">(skip)</option><option value="G">So brave</option><option value="H">So kind</option><option value="R">So clever</option><option value="S">Never gives up</option></select></label>
+    <div class="grow"><button type="submit" id="gSave">Add guest</button><button type="button" id="gReset">Clear form</button><button type="button" id="gClose">Done</button></div>
+    <div id="gMsg"></div>
+  </form>
+  <ul id="gList"></ul>
+</div></div>
 <div id="status"></div>
 <details id="menu"><summary aria-label="Settings">⚙</summary>
   <div class="panel">
@@ -57,10 +86,7 @@ summary::-webkit-details-marker{display:none}
     <label><input type="checkbox" id="capChk"> Show captions</label>
     <label>Hat voice <select id="voiceSel"></select></label>
     <div><button id="voiceTest">Test voice</button><button id="scoreBtn">Speak scores</button></div>
-    <details id="guestBox"><summary style="font-size:.95rem;color:var(--ink);padding:4px 0;cursor:pointer">Guest surveys (<span id="gCount">0</span>)</summary>
-      <textarea id="gPaste" rows="4" placeholder="Paste survey codes here (HAT1.…), several at once is fine"></textarea>
-      <div><button id="gImport">Import</button> <span id="gMsg" style="font-size:.85rem"></span></div>
-      <ul id="gList"></ul></details>
+    <div><button id="openGuests">Guests (<span id="gCount">0</span>)…</button></div>
     <div><button id="clearBtn">Clear table</button><button id="stopBtn">Stop / reset</button></div>
     <div id="voiceNote" style="font-size:.8rem;color:var(--dim)"></div>
   </div>
@@ -340,34 +366,40 @@ async function getAnswer(n, parse, reprompts, withName=false){
 const guests = { get(){ try{return JSON.parse(localStorage.getItem("hatGuests")||"[]")}catch{return []} },
                  set(v){ try{localStorage.setItem("hatGuests",JSON.stringify(v))}catch{} } };
 const clip = (s,n) => String(s||"").replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim().slice(0,n);
-function decodeCode(code){
-  try{
-    let b = code.replace(/^HAT1\./,"").replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4) b+="=";
-    const o = JSON.parse(decodeURIComponent(escape(atob(b))));
-    if(!o || !clip(o.n,20)) return null;
-    return { n:clip(o.n,20), f:clip(o.f,30), a:clip(o.a,30), g:clip(o.g,40), p:clip(o.p,40),
-             c:String(o.c||"").replace(/[^GHRS]/g,"").slice(0,3) };
-  }catch{ return null; }
-}
-function importCodes(text){
-  const found = text.match(/HAT1\.[A-Za-z0-9_-]+/g) || [], all = guests.get(); let added=0;
-  for(const c of found){ const g=decodeCode(c); if(!g) continue;
-    const i=all.findIndex(x=>x.n.toLowerCase()===g.n.toLowerCase()); if(i>=0) all[i]=g; else { all.push(g); added++; } }
-  guests.set(all); renderGuests(); return {found:found.length, added};
-}
 function twoTap(btn, armed, fn){                 // confirm() is blocked in some viewers, so confirm in the button itself
   const orig = btn.textContent; let on=false, t;
   btn.onclick = () => { if(!on){ on=true; btn.textContent=armed; t=setTimeout(()=>{on=false;btn.textContent=orig},3000); }
                         else { clearTimeout(t); on=false; btn.textContent=orig; fn(); } };
 }
+let editing=null;                                              // lower-cased name being edited
+const gv = id => $(id).value;
 function renderGuests(){
   const all=guests.get(); $("gCount").textContent=all.length; const ul=$("gList"); ul.innerHTML="";
-  all.forEach((g,i)=>{ const li=document.createElement("li"); li.textContent=g.n+" "; li.style.cursor="pointer";
-    const x=document.createElement("span"); x.textContent="(tap to remove)"; x.style.color="var(--dim)"; li.appendChild(x);
-    let on=false,t; li.onclick=()=>{ if(!on){ on=true; x.textContent="tap again to remove"; t=setTimeout(()=>{on=false;x.textContent="(tap to remove)"},3000); }
-      else { clearTimeout(t); const a=guests.get(); a.splice(i,1); guests.set(a); renderGuests(); } };
+  all.forEach(g=>{
+    const li=document.createElement("li"); li.className="gitem";
+    const sp=document.createElement("span"); sp.textContent=g.n; li.appendChild(sp);
+    const e=document.createElement("button"); e.textContent="Edit"; e.onclick=()=>loadGuest(g); li.appendChild(e);
+    const x=document.createElement("button"); x.textContent="Remove";
+    twoTap(x,"Sure?",()=>{ guests.set(guests.get().filter(y=>y.n.toLowerCase()!==g.n.toLowerCase())); renderGuests(); }); li.appendChild(x);
     ul.appendChild(li); });
 }
+function loadGuest(g){
+  $("gN").value=g.n; $("gF").value=g.f; $("gA").value=g.a; $("gG").value=g.g; $("gP").value=g.p;
+  [0,1,2].forEach(i=>$("gC"+i).value=(g.c&&g.c[i]&&"GHRS".includes(g.c[i]))?g.c[i]:"-");
+  editing=g.n.toLowerCase(); $("gSave").textContent="Save changes"; $("gMsg").textContent="Editing "+g.n; $("gN").focus();
+}
+function resetGuestForm(){ $("gForm").reset(); editing=null; $("gSave").textContent="Add guest"; }
+$("gForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const n=clip(gv("gN"),20); if(!n){ $("gMsg").textContent="Please enter a name."; return; }
+  const g={ n, f:clip(gv("gF"),30), a:clip(gv("gA"),30), g:clip(gv("gG"),40), p:clip(gv("gP"),40), c:[0,1,2].map(i=>gv("gC"+i)).join("") };
+  let all=guests.get().filter(x=>x.n.toLowerCase()!==n.toLowerCase() && x.n.toLowerCase()!==editing);
+  all.push(g); guests.set(all);
+  resetGuestForm(); $("gMsg").textContent=`Saved ${n}. Next guest?`; renderGuests(); $("gN").focus();
+});
+$("gReset").onclick = () => { resetGuestForm(); $("gMsg").textContent=""; };
+$("gClose").onclick = () => { $("guestView").classList.remove("open"); };
+$("openGuests").onclick = () => { $("menu").open=false; $("guestView").classList.add("open"); $("gN").focus(); };
 const lev = (a,b) => { const d=[...Array(b.length+1).keys()]; for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i;
   for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } } return d[b.length]; };
 const key = s => s.toLowerCase().replace(/[^a-z]/g,"");
@@ -380,7 +412,7 @@ function matchGuest(spoken){                                   // index into gue
   return bd<99 ? best : -1;
 }
 function suggest(g){                                           // house the survey leans towards, or null on a tie
-  if(!g || !g.c) return null; const t={G:0,H:0,R:0,S:0}; for(const ch of g.c) t[ch]++;
+  if(!g || !g.c) return null; const t={G:0,H:0,R:0,S:0}; for(const ch of g.c) if(ch in t) t[ch]++;
   const r=Object.entries(t).sort((a,b)=>b[1]-a[1]); return r[0][1]>0 && r[0][1]>r[1][1] ? r[0][0] : null;
 }
 // Lines the Hat can say about this particular guest
@@ -392,7 +424,7 @@ function personalLines(g, house){
   if(g.g) L.push(pick([`I hear you are rather good at ${g.g}. Hmm. That's a secret weapon, that is.`, `Ah, ${g.g}! I have a great many opinions about ${g.g}, and I'm keeping every one of them to myself.`]));
   if(g.p) L.push(pick([`And if you could have any magic power, you'd choose ${g.p}. Dangerous. Wonderful. Please don't test it on me.`, `Your wish is ${g.p}. That's quite a wish, {n}. I've heard worse. Mostly from goats.`]));
   const mine=[], others=[];
-  [...g.c].forEach((ch,i)=>{ const q=CQ[i]&&CQ[i][ch]; if(!q) return; const t=pick(LEADS)+q; (ch===house?mine:others).push(t); });
+  [...(g.c||"")].forEach((ch,i)=>{ const q=CQ[i]&&CQ[i][ch]; if(!q) return; const t=pick(LEADS)+q; (ch===house?mine:others).push(t); });
   return { lines: shuffle(L.concat(others)), target: mine.length ? pick(mine) : null };
 }
 
@@ -510,7 +542,6 @@ $("voiceTest").onclick = async () => { await unlock(); say("Hmmmm. Difficult. Ve
 $("scoreBtn").onclick = async () => { await unlock(); const all=store.get(); const t=k=>all.filter(a=>a.house===k).length;
   sayChain([{t:"House points, as they stand."},...Object.keys(H).map(k=>({t:`${H[k].name}: ${t(k)}.`})),{t:all.length?"Carry on, wizards.":"Nobody has been sorted yet."}]); };
 twoTap($("clearBtn"), "Tap again to clear", () => { store.set([]); renderTable(); });
-$("gImport").onclick = () => { const r=importCodes($("gPaste").value); $("gMsg").textContent = r.found ? `Read ${r.found} code${r.found>1?"s":""}.` : "No codes found."; if(r.found) $("gPaste").value=""; };
 $("stopBtn").onclick = () => { try{speechSynthesis.cancel()}catch{} location.reload(); };
 micOn = !!SR; $("micChk").checked = micOn;
 if(!SR) setStatus("No mic support here. Type names on the phone.");
