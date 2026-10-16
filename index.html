@@ -6,20 +6,33 @@
 <meta name="theme-color" content="#000000">
 <title>Sorting Hat</title>
 <style>
-:root{--ink:#6b6480;--dim:#3a3548;--gold:#8a6d2b}
+:root{--ink:#8b84a3;--dim:#3a3548;--gold:#a8832f}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:Georgia,serif}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:calc(env(safe-area-inset-top) + 44px) 14px calc(env(safe-area-inset-bottom) + 150px)}
 button,select,input{font:inherit}
-#big{background:transparent;color:var(--gold);border:2px solid var(--dim);border-radius:24px;width:min(80vw,340px);padding:44px 12px;font-size:1.6rem}
+#big{background:transparent;color:var(--gold);border:2px solid var(--dim);border-radius:24px;width:min(80vw,340px);padding:38px 12px;font-size:1.5rem}
 #big:active{background:#111}
 #status{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:16px;right:60px;font-size:.8rem;color:var(--dim);min-height:1.2em}
-#cap{position:fixed;left:16px;right:16px;bottom:130px;text-align:center;color:var(--ink);font-size:1.1rem;display:none}
+#cap{position:fixed;left:16px;right:16px;bottom:150px;text-align:center;color:var(--ink);font-size:1.05rem;display:none}
 body.caps #cap{display:block}
-#host{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);display:none;justify-content:center;align-items:center;gap:14px}
-#host button{width:60px;height:60px;border-radius:50%;background:transparent;border:2px solid var(--dim);color:var(--ink);font-size:1.3rem}
-#host input{background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:12px;padding:10px;width:170px;display:none}
-details{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:10px;text-align:right}
+#host{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 84px);display:none;justify-content:center;align-items:center;gap:14px}
+#host button{width:58px;height:58px;border-radius:50%;background:transparent;border:2px solid var(--dim);color:var(--ink);font-size:1.3rem}
+#host input{background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:12px;padding:10px;width:180px;display:none}
+#noiseBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 18px);display:none;
+  background:transparent;color:var(--ink);border:2px solid var(--dim);border-radius:99px;padding:14px 26px;font-size:1.1rem}
+#noiseBtn.on{border-color:var(--gold);color:var(--gold)}
+#picker{display:none;text-align:center;width:min(94vw,420px)}
+#picker h2{font-size:1.15rem;font-weight:normal;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.hbtn{border:2px solid var(--dim);border-radius:16px;padding:22px 6px;font-size:1.1rem;background:transparent;color:var(--ink)}
+.hbtn:active{filter:brightness(1.6)}
+#table{width:min(94vw,420px)}
+.card{border:1px solid var(--dim);border-radius:14px;padding:8px 10px;min-height:70px}
+.card h3{margin:0 0 4px;font-size:.9rem;font-weight:normal}
+.card ul{margin:0;padding:0;list-style:none;font-size:.95rem}
+.card li{padding:2px 0}
+details{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:10px;text-align:right;z-index:5}
 summary{list-style:none;cursor:pointer;color:var(--dim);font-size:1.4rem;padding:4px 8px}
 summary::-webkit-details-marker{display:none}
 .panel{background:#0b0a10;border:1px solid var(--dim);border-radius:12px;padding:12px;margin-top:6px;text-align:left;width:min(88vw,320px);font-size:.95rem;color:var(--ink)}
@@ -34,41 +47,40 @@ summary::-webkit-details-marker{display:none}
   <div class="panel">
     <label><input type="checkbox" id="micChk"> Listen for spoken names</label>
     <label><input type="checkbox" id="capChk"> Show captions</label>
-    <label><input type="checkbox" id="balChk" checked> Balance the houses</label>
-    <label><input type="checkbox" id="noiseChk" checked> Pause when the room is too noisy</label>
-    <div>Noise limit <input type="range" id="noiseRange" min="-60" max="-10" value="-34" style="width:100%"><span id="noiseVal"></span></div>
-    <div><button id="noiseTest">Check room</button><button id="noiseSet">Set limit from room</button></div>
-    <div id="noiseOut" style="font-size:.85rem;color:var(--dim)"></div>
     <label>Hat voice <select id="voiceSel"></select></label>
     <div><button id="voiceTest">Test voice</button><button id="scoreBtn">Speak scores</button></div>
-    <div><button id="clearBtn">Clear scores</button><button id="stopBtn">Stop / reset</button></div>
+    <div><button id="clearBtn">Clear table</button><button id="stopBtn">Stop / reset</button></div>
     <div id="voiceNote" style="font-size:.8rem;color:var(--dim)"></div>
   </div>
 </details>
+
+<div id="picker"><h2 id="pickTitle"></h2><div class="grid" id="pickGrid"></div></div>
+<div id="table"><div class="grid" id="tableGrid"></div></div>
 <button id="big">Wake the Hat</button>
 <div id="cap"></div>
 <div id="host"><input id="hostName" type="text" placeholder="type name, Enter" aria-label="Type the child's name"></div>
+<button id="noiseBtn">🔇 Too noisy</button>
 
 <script>
 "use strict";
 /* ================= DATA ================= */
 const H = {
-  G:{name:"Gryffindor",traits:["brave","daring","a little bit loud"],
+  G:{name:"Gryffindor",color:"#7a2a2a",traits:["brave","daring","a little bit loud"],
      dare:"House dare: give your very best lion ROAR!",
      hints:["I sense a streak of daring. Do you leap before you look, {n}? Don't answer, I can see it from here.",
             "Something fiery in here. Sparks! Tell me you haven't been jumping off the furniture.",
             "There's a roar brewing in this one. I'm sure of it."]},
-  H:{name:"Hufflepuff",traits:["kind","loyal","a sharer of snacks"],
+  H:{name:"Hufflepuff",color:"#8a7420",traits:["kind","loyal","a sharer of snacks"],
      dare:"House dare: give someone in the room a proper compliment. Right now!",
      hints:["There's a warm glow in here. Somebody shares their snacks, don't they?",
             "I detect an enormous heart. Kindness, loyalty, and probably a few crumbs.",
             "Oh, you're the one who notices when someone is left out, aren't you, {n}?"]},
-  R:{name:"Ravenclaw",traits:["clever","curious","full of strange facts"],
+  R:{name:"Ravenclaw",color:"#2a4a8a",traits:["clever","curious","full of strange facts"],
      dare:"House dare: make up a riddle and stump the room!",
      hints:["So many questions rattling around in here! Why this, why that, why do hats talk?",
             "A very curious mind. Always asking but why. I love it, {n}.",
             "Clever little thoughts whizzing about like pixies."]},
-  S:{name:"Slytherin",traits:["cunning","ambitious","excellent at plans"],
+  S:{name:"Slytherin",color:"#2a6a44",traits:["cunning","ambitious","excellent at plans"],
      dare:"House dare: invent a secret handshake for your house. Recruit a partner!",
      hints:["I sense a cunning plan. You've already worked out where the cake is, haven't you?",
             "Ooh, ambition! Something big is being planned in here. Do share the credit.",
@@ -83,6 +95,10 @@ const NEUTRAL = [
   "Ooh, a ticklish thought just went by. Gone. Never mind.",
   "Oh, you've got something in there. A big dream, perhaps? Don't tell me, I like to guess."
 ];
+
+const NOISY  = ["Oh dear. I can't hear very well with all this noise. I shall wait until it is quieter.",
+                "Goodness me, my brim is ringing. I can't hear a thing. I'll wait for a little hush."];
+const RESUME = ["Ah, that's better. Now, where was I?","Mmm, much better. Where were we?"];
 /* ================= HELPERS ================= */
 const $ = id => document.getElementById(id);
 const FAST = location.search.includes("fast");               // test mode: shrinks waits
@@ -126,33 +142,60 @@ function pickVoice(){
   $("voiceNote").textContent = list[0].sc>=80 ? "★ = best British Hat voices on this phone." : "No premium British voice found. Android: Settings > Text-to-speech. iPhone: Accessibility > Spoken Content > Voices > English (UK) > Daniel / Arthur.";
 }
 if("speechSynthesis" in window){ speechSynthesis.onvoiceschanged = pickVoice; pickVoice(); }
+
 const STYLE = { normal:{rate:.95,pitch:.65}, whisper:{rate:.82,pitch:.45}, excited:{rate:1.05,pitch:.8}, slow:{rate:.75,pitch:.6} };
 const ttsOK = () => !muted && "speechSynthesis" in window && speechSynthesis.getVoices().length > 0;
+const mkUtt = c => { const u=new SpeechSynthesisUtterance(c.t); if(voice) u.voice=voice;
+  const st=STYLE[c.s||"normal"]; u.rate=st.rate; u.pitch=st.pitch; return u; };
 
-// Speak chunks back-to-back so it flows like one thought. chunks: [{t, s}]
-function sayChain(chunks){
-  chunks = chunks.filter(Boolean);
-  if(!ttsOK()){
-    return chunks.reduce((p,c)=>p.then(async()=>{ cap(c.t); await sleep(Math.min(4500,600+c.t.length*45)); }), Promise.resolve());
-  }
+/* ---- pause ("too noisy") ---- */
+let paused=false, pauseCount=0, resumeWaiters=[], abortSpeech=()=>{};
+const waitResume = () => paused ? new Promise(r=>resumeWaiters.push(r)) : Promise.resolve();
+function speakNow(t, s){                                  // raw speech that ignores the pause flag
+  cap(t);
+  if(!ttsOK()) return sleep(Math.min(4500,600+t.length*45));
   speechSynthesis.cancel();
+  return new Promise(res=>{ const u=mkUtt({t,s}); const g=setTimeout(res,12000); u.onend=u.onerror=()=>{clearTimeout(g);res();}; speechSynthesis.speak(u); });
+}
+// Queue chunks back-to-back so it flows. If paused mid-way, resume re-speaks from the interrupted chunk.
+function speakQueue(chunks){
   return new Promise(res=>{
+    let done=0, fin=false;
+    const finish = n => { if(!fin){ fin=true; clearTimeout(guard); abortSpeech=()=>{}; res(n); } };
     const total = chunks.reduce((n,c)=>n+c.t.length,0);
-    const guard = setTimeout(res, total*130+8000);
-    chunks.forEach((c,i)=>{
-      const u = new SpeechSynthesisUtterance(c.t);
-      if(voice) u.voice = voice;
-      const st = STYLE[c.s||"normal"]; u.rate=st.rate; u.pitch=st.pitch;
-      u.onstart = () => cap(c.t);
-      if(i===chunks.length-1) u.onend = u.onerror = () => { clearTimeout(guard); res(); };
+    const guard = setTimeout(()=>finish(chunks.length), total*130+8000);   // TTS silently dead: move on
+    abortSpeech = () => finish(done);
+    speechSynthesis.cancel();
+    chunks.forEach(c=>{
+      const u=mkUtt(c);
+      u.onstart=()=>cap(c.t);
+      u.onend=()=>{ done++; if(done===chunks.length) finish(done); };
+      u.onerror=()=>{ if(paused) finish(done); else { done++; if(done===chunks.length) finish(done); } };
       speechSynthesis.speak(u);
     });
   });
 }
-const say = (t, s) => sayChain([{t, s}]);
-
-
-const ACKS = [];
+async function sayChain(chunks){
+  chunks = chunks.filter(Boolean);
+  let i=0;
+  while(i<chunks.length){
+    await waitResume();
+    if(!ttsOK()){ cap(chunks[i].t); await sleep(Math.min(4500,600+chunks[i].t.length*45)); i++; continue; }
+    i += await speakQueue(chunks.slice(i));
+  }
+}
+const say = (t,s) => sayChain([{t,s}]);
+async function togglePause(){
+  if(!paused){
+    paused=true; pauseCount++; $("noiseBtn").textContent="▶ Quiet now"; $("noiseBtn").classList.add("on");
+    abortSpeech(); try{ speechSynthesis.cancel(); }catch{}; try{ rec && rec.abort(); }catch{}
+    await speakNow(pickOne(NOISY));
+  } else {
+    await speakNow(pickOne(RESUME));
+    paused=false; $("noiseBtn").textContent="🔇 Too noisy"; $("noiseBtn").classList.remove("on");
+    resumeWaiters.splice(0).forEach(r=>r());
+  }
+}
 /* ================= EARS (optional) ================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, tapResolve = null;
@@ -187,7 +230,7 @@ const parseHouse = (k1,k2) => h => { const n = norm(h);
 function cleanName(h){
   let n = h.replace(/[^\p{L}\s'-]/gu," ").trim();
   for(let i=0;i<2;i++) n = n.replace(/^(hi|hello|hey|um|uh|er|my name is|my names|name is|i am|i'm|im|it's|its|this is|call me|they call me)\s+/i,"");
-  const w = n.split(/\s+/).filter(Boolean).slice(0,3); if(!w.length) return null;
+  const w = n.split(/\s+/).filter(Boolean).slice(0,3); if(!w.length || /^(yes|no|yeah|yep|yup|nope)$/i.test(w.join(" "))) return null;
   return w.map(x=>x[0].toUpperCase()+x.slice(1).toLowerCase()).join(" ");
 }
 const parseName = h => { const n = cleanName(h); return n ? {name:n} : -1; };
@@ -217,62 +260,12 @@ function listenParse(parse){
   });
 }
 
-/* ================= NOISE GATE ================= */
-let noiseOn = true, noiseLimit = -34, lastLevel = null, noiseRun = 0;
-try{ const v=+localStorage.getItem("noiseLimit"); if(v) noiseLimit=v; }catch{}
-const NOISY = ["Oh dear. I can't hear very well with all this noise. I shall wait until it is quieter.",
-               "Goodness me, my brim is ringing. I can't hear a thing. I'll wait for a little hush."];
-const NAGS  = ["Still too noisy. I am a hat, not a trumpet.","I am waiting… my brim is very patient.","Shhhhh! Hat needs to listen.","Nothing yet. Quieter, please."];
-// Average loudness (dBFS, 75th percentile of ~60ms frames) over ms. null = unavailable, {err} = mic blocked
-async function measureLevel(ms=1100){
-  const c = ac(); if(!c || !navigator.mediaDevices) return null;
-  let stream;
-  try{ stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}); }
-  catch{ return {err:true}; }
-  try{
-    await c.resume();
-    const src=c.createMediaStreamSource(stream), an=c.createAnalyser(); an.fftSize=1024; src.connect(an);
-    const buf=new Float32Array(an.fftSize), vals=[], end=performance.now()+ms;
-    while(performance.now()<end){
-      await new Promise(r=>setTimeout(r,60)); an.getFloatTimeDomainData(buf);
-      let sum=0; for(const x of buf) sum+=x*x; vals.push(20*Math.log10(Math.sqrt(sum/buf.length)||1e-6));
-    }
-    src.disconnect(); vals.sort((a,b)=>a-b);
-    return vals.length ? vals[Math.floor(vals.length*.75)] : null;
-  } finally { stream.getTracks().forEach(t=>t.stop()); }               // free the mic before speech recognition starts
-}
-function micBlocked(){ micOn=false; $("micChk").checked=false; setStatus("Mic unavailable. Use the keypad"); }
-// Resolves "ok" (quiet enough), "waited" (was noisy, now quiet), or "nomic". Abandoned if noiseRun changes (host tapped).
-async function ensureQuiet(silentResume=false){
-  if(!noiseOn || !micOn || !SR) return "ok";
-  const my = ++noiseRun;
-  let lvl = await measureLevel(1100);
-  if(my!==noiseRun) return "ok";
-  if(lvl && lvl.err){ micBlocked(); return "nomic"; }
-  lastLevel = lvl; if(lvl!=null) setStatus(`room ${Math.round(lvl)} dB (limit ${noiseLimit})`);
-  if(lvl==null || lvl<=noiseLimit) return "ok";
-  await say(pickOne(NOISY),"excited");
-  const t0=Date.now(); let quietSince=null, lastNag=Date.now();
-  while(my===noiseRun){
-    await sleep(600);
-    lvl = await measureLevel(900);
-    if(my!==noiseRun) return "ok";
-    if(lvl && lvl.err){ micBlocked(); return "nomic"; }
-    if(lvl!=null) setStatus(`room ${Math.round(lvl)} dB (limit ${noiseLimit})`);
-    if(lvl==null || lvl<=noiseLimit){ quietSince = quietSince || Date.now(); if(Date.now()-quietSince>1500) break; }
-    else quietSince=null;
-    if(Date.now()-lastNag>14000){ await say(pickOne(NAGS),"whisper"); lastNag=Date.now(); }
-    if(Date.now()-t0>45000) break;                                        // do not wait forever
-  }
-  if(my!==noiseRun) return "ok";
-  if(!silentResume) await say("Ah. Much better.","whisper"); return "waited";
-}
 
 const tapWait = () => new Promise(r => { tapResolve = r; });
-const hostEl = $("host"), hostIn = $("hostName");
+const hostEl=$("host"), hostIn=$("hostName");
 function showHost(n, withName){
   hostEl.querySelectorAll("button").forEach(b=>b.remove());
-  for(let i=0;i<n;i++){ const b=document.createElement("button"); b.textContent=n===1?"▶":i+1; b.setAttribute("aria-label",n===1?"Carry on":"Answer "+(i+1));
+  for(let i=0;i<n;i++){ const b=document.createElement("button"); b.textContent=i+1; b.setAttribute("aria-label","Answer "+(i+1));
     b.onclick=()=>{ if(tapResolve){ const r=tapResolve; tapResolve=null; r(i); } }; hostEl.insertBefore(b,hostIn); }
   hostIn.style.display = withName ? "block" : "none";
   hostEl.style.display = (n||withName) ? "flex" : "none";
@@ -284,35 +277,48 @@ hostIn.addEventListener("keydown", e => { if(e.key==="Enter"){ const n=cleanName
 async function getAnswer(n, parse, reprompts, withName=false){
   showHost(n, withName);
   for(let t=0;t<=reprompts.length;t++){
-    const pre = await Promise.race([ensureQuiet(), tapWait()]);
-    if(pre!=null && typeof pre!=="string"){ noiseRun++; try{speechSynthesis.cancel()}catch{} tapResolve=null; hideHost(); return pre; }
-    if(pre==="waited") await say(reprompts[0]);
+    await waitResume();
+    const pc = pauseCount;
     const r = await Promise.race([listenParse(parse), tapWait()]);
     try{ rec && rec.abort(); }catch{}
     tapResolve = null;
     if(r!==null){ hideHost(); return r; }
-    if(t<reprompts.length){
-      const loud = lastLevel!=null && lastLevel > noiseLimit-6;
-      await say(loud ? "I can't hear very well over the noise. Come closer and speak up. " + reprompts[0] : reprompts[t]);
-    }
+    if(pc!==pauseCount){ await waitResume(); await say(reprompts[0]); t--; continue; }   // paused: don't burn a retry
+    if(t<reprompts.length) await say(reprompts[t]);
   }
   hideHost(); return null;
 }
-// pause between ceremony segments if the room got noisy (host can tap ▶ to skip the wait)
-async function quietGate(){
-  if(!(noiseOn && micOn && SR)) return;
-  showHost(1,false);
-  const r = await Promise.race([ensureQuiet(true), tapWait()]);
-  if(typeof r!=="string"){ noiseRun++; try{speechSynthesis.cancel()}catch{} tapResolve=null; }
-  hideHost();
-  if(r==="waited") await sayChain([{t:pick(["Now then, where was I?","Ah, that's better. Where was I?"]),s:"whisper"}]);
+
+/* ================= HOUSE TABLE ================= */
+const store = { get(){ try{return JSON.parse(localStorage.getItem("sortedKids")||"[]")}catch{return []} },
+                set(v){ try{localStorage.setItem("sortedKids",JSON.stringify(v))}catch{} } };
+function renderTable(){
+  const all=store.get(), g=$("tableGrid"); g.innerHTML="";
+  Object.keys(H).forEach(k=>{
+    const mem=all.map((a,i)=>({...a,i})).filter(a=>a.house===k);
+    const d=document.createElement("div"); d.className="card"; d.style.borderColor=H[k].color;
+    const h=document.createElement("h3"); h.style.color=H[k].color==="#8a7420"?"#c9a82e":H[k].color; h.textContent=`${H[k].name} (${mem.length})`; d.appendChild(h);
+    const ul=document.createElement("ul");
+    mem.forEach(m=>{ const li=document.createElement("li"); li.textContent=m.name; li.title="Tap to remove";
+      li.onclick=()=>{ if(confirm(`Remove ${m.name} from ${H[k].name}?`)){ const a=store.get(); a.splice(m.i,1); store.set(a); renderTable(); } };
+      ul.appendChild(li); });
+    d.appendChild(ul); g.appendChild(d);
+  });
+}
+function pickHouse(who){                                   // host chooses the house on screen
+  return new Promise(res=>{
+    $("pickTitle").textContent=`Which house for ${who}?`;
+    const g=$("pickGrid"); g.innerHTML="";
+    Object.keys(H).forEach(k=>{ const b=document.createElement("button"); b.className="hbtn"; b.textContent=H[k].name; b.style.borderColor=H[k].color;
+      b.onclick=()=>{ $("picker").style.display="none"; res(k); }; g.appendChild(b); });
+    $("picker").style.display="block";
+  });
 }
 
 /* ================= THE SHOW ================= */
 let name="", house=null, busy=false;
 const fill = t => t.replace(/\{n\}/g, name);
-const pick = a => a[Math.floor(Math.random()*a.length)];
-
+const pick = pickOne;
 async function getName(){
   let cand=null;
   for(let round=0; round<4; round++){
@@ -324,25 +330,18 @@ async function getName(){
     const c = await getAnswer(2, parseConfirm, ["Yes, or tell me your name again?"], true);
     if(c===0 || c===null) return cand;
     if(c===1){ cand=null; await say("Oh dear, my ears! Once more, what is your name?"); continue; }
-    if(c && c.name) cand = c.name;                           // they just said their name again; confirm that
+    if(c && c.name) cand = c.name;
   }
   return cand;
 }
-function chooseHouse(){
-  const keys = Object.keys(H);
-  if(!$("balChk").checked) return pick(keys);
-  const all = store.get(), cnt = k => all.filter(a=>a.house===k).length, min = Math.min(...keys.map(cnt));
-  return pick(keys.filter(k=>cnt(k)===min));
-}
-
 async function runChild(){
-  if(busy) return; busy=true; $("big").style.display="none"; $("menu").open=false; setStatus("");
-  magic();
+  if(busy) return; busy=true; $("big").style.display="none"; $("table").style.display="none"; $("menu").open=false; setStatus("");
+  $("noiseBtn").style.display="block"; magic();
   await sayChain([{t:"Ahhh. At last, a head beneath me. Hmmmm…",s:"slow"},{t:"Tell me, young wizard, what is your name?"}]);
   name = (await getName()) || "Young Wizard";
+  const choosing = pickHouse(name);                         // host picks while the Hat is talking
   await sayChain([{t:`${name}.`,s:"slow"},{t:"Splendid. Now keep very still while I think."}]);
-
-  house = chooseHouse();
+  house = await choosing;
   const decoy = pick(Object.keys(H).filter(k=>k!==house));
   const seg = [
     [{t:`Hmmmm… ${name}. Yes. Yes, a head. And a very interesting one.`,s:"slow"}, {t:pick(NEUTRAL)}],
@@ -351,19 +350,16 @@ async function runChild(){
     [{t:"Hm hm hm. Yes. No. Yes… Oh! I know exactly where to put you.",s:"slow"}, {t:"Better be…",s:"slow"}, {t:H[house].name.toUpperCase()+"!",s:"excited"}]
   ];
   murmur();
-  for(let i=0;i<seg.length;i++){
-    if(i>0) await quietGate();
-    await sayChain(seg[i].map(c=>({...c,t:fill(c.t)})));
-  }
-  fanfare(); await sleep(900);
-  const h=H[house]; save(house);
+  for(const s of seg) await sayChain(s.map(c=>({...c,t:fill(c.t)})));
+  fanfare();
+  const all=store.get(); all.push({name,house,ts:Date.now()}); store.set(all);
+  renderTable(); $("table").style.display="block";         // table appears as they're sorted
+  await sleep(700);
+  const h=H[house];
   await sayChain([{t:`${name}, you are ${h.traits.join(", ")}. Wear it proudly.`},{t:h.dare,s:"excited"},{t:"Next wizard, step forward!",s:"slow"}]);
-  busy=false; setStatus("");
+  busy=false; $("noiseBtn").style.display="none"; $("noiseBtn").textContent="🔇 Too noisy";
   $("big").textContent="Next child"; $("big").style.display="";
 }
-const store = { get(){ try{return JSON.parse(localStorage.getItem("sortedKids")||"[]")}catch{return []} },
-                set(v){ try{localStorage.setItem("sortedKids",JSON.stringify(v))}catch{} } };
-function save(k){ const all=store.get(); all.push({name,house:k,ts:Date.now()}); store.set(all); }
 
 /* ================= WIRING ================= */
 async function unlock(){
@@ -373,28 +369,18 @@ async function unlock(){
 }
 document.addEventListener("visibilitychange", async()=>{ if(document.visibilityState==="visible"){ try{ if("wakeLock" in navigator) await navigator.wakeLock.request("screen"); }catch{} } });
 $("big").onclick = async () => { await unlock(); runChild(); };
+$("noiseBtn").onclick = togglePause;
 $("micChk").onchange = e => { micOn = e.target.checked && !!SR; if(e.target.checked && !SR){ e.target.checked=false; setStatus("This browser can't listen. Type names on the phone."); } };
 $("capChk").onchange = e => document.body.classList.toggle("caps", e.target.checked);
 $("voiceSel").onchange = e => { voice = speechSynthesis.getVoices().find(v=>v.name===e.target.value) || voice; try{localStorage.setItem("hatVoice",voice.name)}catch{} };
 $("voiceTest").onclick = async () => { await unlock(); say("Hmmmm. Difficult. Very difficult. I see plenty of courage, and not a bad mind either."); };
 $("scoreBtn").onclick = async () => { await unlock(); const all=store.get(); const t=k=>all.filter(a=>a.house===k).length;
   sayChain([{t:"House points, as they stand."},...Object.keys(H).map(k=>({t:`${H[k].name}: ${t(k)}.`})),{t:all.length?"Carry on, wizards.":"Nobody has been sorted yet."}]); };
-$("clearBtn").onclick = () => { if(confirm("Delete all saved results on this phone?")) store.set([]); };
+$("clearBtn").onclick = () => { if(confirm("Clear the whole house table on this phone?")){ store.set([]); renderTable(); } };
 $("stopBtn").onclick = () => { try{speechSynthesis.cancel()}catch{} location.reload(); };
-$("noiseChk").onchange = e => noiseOn = e.target.checked;
-const showLimit = () => { $("noiseVal").textContent = ` ${noiseLimit} dB`; $("noiseRange").value = noiseLimit; };
-$("noiseRange").oninput = e => { noiseLimit = +e.target.value; try{localStorage.setItem("noiseLimit",noiseLimit)}catch{}; showLimit(); };
-$("noiseTest").onclick = async () => { await unlock(); $("noiseOut").textContent="Listening to the room…";
-  const l = await measureLevel(2500);
-  $("noiseOut").textContent = !l && l!==0 ? "Could not read the mic." : l.err ? "Mic blocked. Allow microphone access." :
-    `Room: ${Math.round(l)} dB. ${l>noiseLimit?"TOO NOISY for the Hat.":"Quiet enough."}`; };
-$("noiseSet").onclick = async () => { await unlock(); $("noiseOut").textContent="Hold the room at the loudest you'd accept…";
-  const l = await measureLevel(3000);
-  if(l && !l.err){ noiseLimit = Math.max(-55,Math.min(-12,Math.round(l+6))); try{localStorage.setItem("noiseLimit",noiseLimit)}catch{}; showLimit();
-    $("noiseOut").textContent=`Limit set to ${noiseLimit} dB.`; } else $("noiseOut").textContent="Could not read the mic."; };
-showLimit();
 micOn = !!SR; $("micChk").checked = micOn;
 if(!SR) setStatus("No mic support here. Type names on the phone.");
+renderTable();
 </script>
 </body>
 </html>
