@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Sorting Hat Space</title>
+<style>
+:root{
+  --bg:#14101f; --ink:#f6efe0; --gold:#d9b25f; --card:#221b36; --muted:#b9afd0;
+  --gry:#ae0001; --huf:#e8b800; --rav:#1f4a9c; --sly:#1e7a46;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#2a2050,#14101f 60%);color:var(--ink);
+  font-family:"Georgia","Palatino Linotype",serif;display:flex;flex-direction:column;align-items:center}
+header{width:100%;max-width:820px;display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+header h1{font-size:1rem;margin:0;color:var(--gold);letter-spacing:.08em}
+main{width:100%;max-width:820px;padding:0 16px 40px;flex:1}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--gold);color:#2a1d05;border:0;border-radius:14px;padding:14px 26px;font-size:1.2rem;font-weight:bold}
+.btn:hover,.btn:focus-visible{filter:brightness(1.1);outline:3px solid #fff8}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--gold)}
+.icon{background:transparent;border:2px solid var(--gold);color:var(--ink);border-radius:10px;padding:6px 12px}
+.card{background:var(--card);border-radius:20px;padding:24px;box-shadow:0 10px 30px #0008}
+.center{text-align:center}
+.hat{font-size:clamp(5rem,22vw,9rem);line-height:1;display:inline-block;transform-origin:50% 90%}
+.hat.talk{animation:talk .5s infinite alternate}
+.hat.think{animation:think 1.2s infinite ease-in-out}
+@keyframes talk{to{transform:rotate(-6deg) scale(1.05)}}
+@keyframes think{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg) translateY(-6px)}}
+@media(prefers-reduced-motion:reduce){.hat.talk,.hat.think{animation:none}}
+input[type=text]{font:inherit;font-size:1.4rem;padding:12px 16px;border-radius:12px;border:2px solid var(--gold);
+  background:#fff;color:#222;width:min(100%,320px);text-align:center}
+.bubble{background:#0004;border-left:4px solid var(--gold);border-radius:10px;padding:12px 16px;margin:14px 0;min-height:3.2em;font-size:1.15rem}
+.progress{height:10px;background:#0005;border-radius:99px;overflow:hidden;margin-bottom:14px}
+.progress>div{height:100%;background:var(--gold);transition:width .4s}
+.q{font-size:1.45rem;margin:8px 0 16px}
+.opts{display:grid;gap:12px}
+.opt{display:flex;gap:12px;align-items:center;text-align:left;background:#2f2650;color:var(--ink);border:2px solid #4a3f78;
+  border-radius:16px;padding:16px;font-size:1.15rem}
+.opt:hover,.opt:focus-visible{border-color:var(--gold);outline:none;background:#3a3062}
+.opt .n{background:var(--gold);color:#2a1d05;border-radius:50%;width:2rem;height:2rem;display:grid;place-items:center;flex:none;font-weight:bold}
+.houses{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.house{border-radius:16px;padding:16px;color:#fff;text-align:center;font-size:1.1rem}
+.house .big{font-size:2.6rem}
+.crest{border-radius:24px;padding:28px;text-align:center;color:#fff}
+.crest .big{font-size:5rem}
+.tag{display:inline-block;background:#0004;border-radius:99px;padding:4px 14px;margin:3px;font-size:.95rem}
+.mic{display:flex;align-items:center;gap:10px;margin-top:12px;color:var(--muted);font-size:.95rem}
+.hidden{display:none!important}
+table{width:100%;border-collapse:collapse}
+td,th{padding:8px;border-bottom:1px solid #4a3f78;text-align:left}
+.bars div{display:flex;align-items:center;gap:8px;margin:4px 0}
+.bars span.b{display:block;height:14px;border-radius:7px}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<header>
+  <h1>✦ THE SORTING HAT SPACE ✦</h1>
+  <div>
+    <button class="icon" id="muteBtn" aria-label="Toggle sound">🔊</button>
+    <button class="icon" id="teacherBtn" aria-label="Teacher view">🎓</button>
+  </div>
+</header>
+<main aria-live="polite">
+
+<!-- WELCOME -->
+<section id="welcome" class="card center">
+  <div class="hat">🎩</div>
+  <h2>Welcome, young witch or wizard!</h2>
+  <p>The Sorting Hat has a few questions before the ceremony. There are no wrong answers!</p>
+  <p><input id="nameIn" type="text" maxlength="20" placeholder="Your first name" aria-label="Your first name"></p>
+  <p class="mic hidden" id="voiceOpt" style="justify-content:center">
+    <label><input type="checkbox" id="voiceOn"> Answer out loud with my voice (ask a grown-up first)</label>
+  </p>
+  <p><button class="btn" id="startBtn">Put on the Hat</button></p>
+  <p style="color:var(--muted);font-size:.85rem">Unofficial fan &amp; learning tool. Nothing you say is recorded. Your name stays only on this device.</p>
+</section>
+
+<!-- SURVEY -->
+<section id="survey" class="card hidden">
+  <div class="center"><span class="hat" id="hatS">🎩</span></div>
+  <div class="progress"><div id="bar"></div></div>
+  <div class="bubble" id="hatText"></div>
+  <div class="q" id="qText"></div>
+  <div class="opts" id="opts"></div>
+  <div class="mic hidden" id="micRow">
+    <button class="icon" id="micBtn">🎤 Say your answer</button><span id="micStatus">Say "one", "two", "three" or "four"</span>
+  </div>
+</section>
+
+<!-- CHOICE (tiebreak) -->
+<section id="choice" class="card hidden center">
+  <span class="hat" id="hatC">🎩</span>
+  <div class="bubble" id="choiceText"></div>
+  <div class="houses" id="choiceBtns"></div>
+</section>
+
+<!-- CEREMONY -->
+<section id="ceremony" class="card hidden center">
+  <span class="hat think" id="hatCer">🎩</span>
+  <div class="bubble" id="cerText">Hmm…</div>
+</section>
+
+<!-- RESULT -->
+<section id="result" class="hidden">
+  <div class="crest" id="crest"></div>
+  <div class="card" style="margin-top:16px">
+    <h3>Your superpowers</h3><div id="traits"></div>
+    <h3>Your stretch challenge</h3><p id="stretch"></p>
+    <h3>Your score story</h3><div class="bars" id="bars"></div>
+    <h3>Talk about it 💬</h3><ul id="reflect"></ul>
+    <p class="center"><button class="btn" id="againBtn">Next student</button>
+    <button class="btn ghost" id="replayBtn">🔊 Hear it again</button></p>
+  </div>
+</section>
+
+<!-- TEACHER -->
+<section id="teacher" class="card hidden">
+  <h2>🎓 Teacher view</h2>
+  <p style="color:var(--muted)">Results are stored only in this browser. Export before clearing.</p>
+  <div id="tally" class="houses"></div>
+  <table id="tbl"><thead><tr><th>Name</th><th>House</th><th>Chosen by child?</th></tr></thead><tbody></tbody></table>
+  <p><button class="btn" id="csvBtn">Export CSV</button>
+  <button class="btn ghost" id="clearBtn">Clear all</button>
+  <button class="btn ghost" id="backBtn">Back</button></p>
+</section>
+</main>
+
+<script>
+"use strict";
+/* ---------- Data ---------- */
+const H = {
+  G:{name:"Gryffindor",emoji:"🦁",color:"var(--gry)",traits:["Brave","Daring","Chivalrous"],
+     stretch:"Try pausing to listen before you leap, like a Ravenclaw would.",
+     cheer:"Courage, my friend! Gryffindor!"},
+  H:{name:"Hufflepuff",emoji:"🦡",color:"var(--huf)",traits:["Kind","Loyal","Fair"],
+     stretch:"Try speaking up first when you have a bold idea, like a Gryffindor would.",
+     cheer:"Where they are just and loyal… Hufflepuff!"},
+  R:{name:"Ravenclaw",emoji:"🦅",color:"var(--rav)",traits:["Curious","Wise","Creative"],
+     stretch:"Try turning a clever idea into action today, like a Slytherin would.",
+     cheer:"Wit beyond measure… Ravenclaw!"},
+  S:{name:"Slytherin",emoji:"🐍",color:"var(--sly)",traits:["Determined","Resourceful","Ambitious"],
+     stretch:"Try sharing the spotlight and the credit, like a Hufflepuff would.",
+     cheer:"Cunning and ambitious… Slytherin!"}
+};
+// skill = CASEL competency each question builds on
+const QS = [
+ {q:"A new kid is sitting all alone at lunch. What do you do?", skill:"Social awareness",
+  o:[["G","Walk right over and say hi, even if it feels scary"],["H","Invite them to sit with you and your friends"],
+     ["R","Ask them a fun question to find out what they like"],["S","Make a plan so they join the game everyone wants to play"]]},
+ {q:"You find a mysterious door in the castle. What happens next?", skill:"Self-awareness",
+  o:[["G","Open it straight away!"],["H","Get a friend so no one explores alone"],
+     ["R","Study the door and look for clues first"],["S","Find the secret way to get the best view"]]},
+ {q:"Your team is losing the game. What is your move?", skill:"Self-management",
+  o:[["G","Take a big risk to turn it around"],["H","Cheer on every teammate"],
+     ["R","Spot the other team's pattern"],["S","Never give up, try something new"]]},
+ {q:"Which would you most want to be great at?", skill:"Self-awareness",
+  o:[["G","Being fearless"],["H","Being a loyal friend"],["R","Knowing amazing things"],["S","Reaching big goals"]]},
+ {q:"A friend breaks a school rule by accident. You…", skill:"Responsible decision-making",
+  o:[["G","Stand up and say it was an accident"],["H","Stay by their side and help fix it"],
+     ["R","Work out what rule was really meant"],["S","Find a smart way to put it right quietly"]]},
+ {q:"It is a rainy day. What sounds best?", skill:"Self-awareness",
+  o:[["G","An adventure game, indoors"],["H","Baking treats to share"],["R","Reading a book of mysteries"],["S","Building the biggest fort ever"]]},
+ {q:"You get a hard puzzle that no one has solved. You…", skill:"Self-management",
+  o:[["G","Jump in and try right now"],["H","Ask a friend to try it with you"],
+     ["R","Think and think until it clicks"],["S","Keep trying till you crack it"]]},
+ {q:"What do you want your friends to say about you?", skill:"Relationship skills",
+  o:[["G","\"You are so brave!\""],["H","\"You are so kind!\""],["R","\"You are so clever!\""],["S","\"You never give up!\""]]}
+];
+const REFLECT = {
+  G:["Tell a partner about a time you were brave. What did you feel inside?","How can being brave help someone else?"],
+  H:["Tell a partner about a time you were kind. How did it change the day?","What does being fair look like in our class?"],
+  R:["What is something you are curious about? How could you find out more?","Teach a partner something you know."],
+  S:["Tell a partner about a goal you reached. What helped you?","How can you share credit when a team wins?"]
+};
+const NUMWORDS = {1:["one","1","first","won"],2:["two","2","second","too","to"],3:["three","3","third"],4:["four","4","fourth","for"]};
+
+/* ---------- Helpers ---------- */
+const $ = id => document.getElementById(id);
+const sections = ["welcome","survey","choice","ceremony","result","teacher"];
+const show = id => sections.forEach(s => $(s).classList.toggle("hidden", s !== id));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const store = {
+  get(){ try{ return JSON.parse(localStorage.getItem("sortedKids")||"[]"); }catch{ return []; } },
+  set(v){ try{ localStorage.setItem("sortedKids", JSON.stringify(v)); }catch{} }
+};
+
+/* ---------- Audio ---------- */
+let muted = false, actx = null;
+function ac(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch{} } return actx; }
+function tone(freq, dur=.4, type="sine", vol=.08, delay=0){
+  const c = ac(); if(!c || muted) return;
+  const t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.05); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+.05);
+}
+const magic = () => [523,659,784,1047,1319].forEach((f,i)=>tone(f,.5,"triangle",.07,i*.09));
+const murmur = () => [220,247,262,247].forEach((f,i)=>tone(f,.7,"sine",.05,i*.35));
+const fanfare = () => [392,392,523,659,784].forEach((f,i)=>tone(f,.6,"square",.05,i*.18));
+
+let voice = null;
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v=>/en-GB/i.test(v.lang) && /male|daniel|google uk english male/i.test(v.name)) ||
+          vs.find(v=>/en-GB/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null;
+}
+if("speechSynthesis" in window){ speechSynthesis.onvoiceschanged = pickVoice; pickVoice(); }
+function say(text, el){
+  if(el) el.textContent = text;           // always show captions
+  return new Promise(res => {
+    if(muted || !("speechSynthesis" in window)){ setTimeout(res, Math.min(3500, 600+text.length*40)); return; }
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if(voice) u.voice = voice;
+    u.pitch = .6; u.rate = .88;
+    u.onend = res; u.onerror = res;
+    setTimeout(res, 12000);               // safety
+    speechSynthesis.speak(u);
+  });
+}
+
+/* ---------- Voice input (optional) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function listen(opts, onPick){
+  if(!SR) return;
+  try{
+    rec = new SR(); rec.lang = "en-GB"; rec.interimResults = false; rec.maxAlternatives = 3;
+    $("micStatus").textContent = "Listening…";
+    rec.onresult = e => {
+      const heard = [...e.results[0]].map(r=>r.transcript.toLowerCase()).join(" ");
+      let pick = -1;
+      for(let i=0;i<4;i++) if(NUMWORDS[i+1].some(w=>new RegExp("\\b"+w+"\\b").test(heard))) {pick=i;break;}
+      if(pick<0) pick = opts.findIndex(o=>o[1].toLowerCase().split(/\W+/).filter(w=>w.length>4).some(w=>heard.includes(w)));
+      if(pick>=0){ onPick(pick); } else { $("micStatus").textContent = "Hmm, I did not catch that. Try again!"; }
+    };
+    rec.onerror = () => $("micStatus").textContent = "No worries, just tap an answer!";
+    rec.onend = () => {};
+    rec.start();
+  }catch{ $("micStatus").textContent = "Tap an answer instead!"; }
+}
+
+/* ---------- State ---------- */
+let name = "", scores = {G:0,H:0,R:0,S:0}, qi = 0, order = [], voiceMode = false, chosen = false, house = null;
+
+/* ---------- Flow ---------- */
+async function start(){
+  name = $("nameIn").value.trim().replace(/[<>]/g,"");
+  if(!name){ $("nameIn").focus(); return; }
+  voiceMode = $("voiceOn").checked && !!SR;
+  scores = {G:0,H:0,R:0,S:0}; qi = 0; chosen = false; order = shuffle(QS);
+  ac() && ac().resume(); magic();
+  show("survey");
+  await say(`Ah, ${name}! Welcome, welcome. Answer honestly, and I shall see what is inside your head.`, $("hatText"));
+  ask();
+}
+function ask(){
+  const Q = order[qi];
+  $("bar").style.width = (qi/QS.length*100)+"%";
+  $("qText").textContent = `${qi+1}. ${Q.q}`;
+  const opts = shuffle(Q.o);
+  const box = $("opts"); box.innerHTML = "";
+  opts.forEach((o,i)=>{
+    const b = document.createElement("button");
+    b.className = "opt"; b.innerHTML = `<span class="n">${i+1}</span><span></span>`;
+    b.lastChild.textContent = o[1];
+    b.onclick = () => pick(o[0]);
+    box.appendChild(b);
+  });
+  $("micRow").classList.toggle("hidden", !voiceMode);
+  $("hatS").classList.add("talk");
+  const reading = say(Q.q + " " + opts.map((o,i)=>`${i+1}. ${o[1]}`).join(". "), $("hatText"));
+  $("hatText").textContent = "Listen carefully…";
+  reading.then(()=>{ $("hatS").classList.remove("talk"); });
+  $("micBtn").onclick = () => { speechSynthesis.cancel(); listen(opts, i => pick(opts[i][0])); };
+  window._cur = opts;
+}
+function pick(h){
+  try{ speechSynthesis.cancel(); rec && rec.abort(); }catch{}
+  scores[h]++; tone(660,.2,"triangle");
+  qi++;
+  if(qi < QS.length) ask(); else finish();
+}
+async function finish(){
+  $("bar").style.width = "100%";
+  const ranked = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const [top, second] = ranked;
+  if(top[1] - second[1] <= 1){
+    show("choice");
+    $("hatC").classList.add("talk");
+    const btns = $("choiceBtns"); btns.innerHTML = "";
+    [top[0], second[0]].forEach(k=>{
+      const b = document.createElement("button");
+      b.className = "house"; b.style.background = H[k].color; b.style.border = "0";
+      b.innerHTML = `<div class="big">${H[k].emoji}</div>${H[k].name}`;
+      b.onclick = () => { chosen = true; $("hatC").classList.remove("talk"); ceremony(k); };
+      btns.appendChild(b);
+    });
+    say(`Hmm, difficult, very difficult, ${name}. You could go to ${H[top[0]].name} or ${H[second[0]].name}. Where do you want to go?`, $("choiceText"));
+  } else ceremony(top[0]);
+}
+async function ceremony(k){
+  house = k; show("ceremony"); murmur();
+  await say(`Hmm… ${name}… I see courage… I see kindness… a good mind, too… and a hunger to prove yourself.`, $("cerText"));
+  await sleep(500);
+  await say("Where shall I put you?", $("cerText"));
+  await sleep(800);
+  fanfare();
+  $("hatCer").classList.remove("think"); $("hatCer").classList.add("talk");
+  await say(H[k].cheer.toUpperCase().replace(/\.\.\./g,"…"), $("cerText"));
+  save(k); showResult(k);
+}
+function save(k){
+  const all = store.get();
+  all.push({name, house:k, chosen, ts:Date.now()});
+  store.set(all);
+}
+function showResult(k){
+  const h = H[k]; show("result");
+  const c = $("crest"); c.style.background = h.color;
+  c.innerHTML = `<div class="big">${h.emoji}</div><h2></h2><p></p>`;
+  c.querySelector("h2").textContent = `${name}, you are in ${h.name}!`;
+  c.querySelector("p").textContent = chosen ? "You chose your house, and the Hat trusts your choice." : "The Hat sees the best in you.";
+  $("traits").innerHTML = ""; h.traits.forEach(t=>{ const s=document.createElement("span"); s.className="tag"; s.textContent=t; $("traits").appendChild(s); });
+  $("stretch").textContent = h.stretch;
+  $("bars").innerHTML = "";
+  Object.keys(H).forEach(x=>{
+    const d = document.createElement("div");
+    d.innerHTML = `<span style="width:7em">${H[x].emoji} ${H[x].name}</span><span class="b" style="width:${scores[x]/QS.length*60+4}%;background:${H[x].color}"></span><span>${scores[x]}</span>`;
+    $("bars").appendChild(d);
+  });
+  $("reflect").innerHTML = ""; REFLECT[k].forEach(r=>{ const li=document.createElement("li"); li.textContent=r; $("reflect").appendChild(li); });
+}
+
+/* ---------- Teacher view ---------- */
+function teacherView(){
+  show("teacher");
+  const all = store.get(), tally = $("tally"); tally.innerHTML = "";
+  Object.keys(H).forEach(k=>{
+    const d = document.createElement("div"); d.className = "house"; d.style.background = H[k].color;
+    d.innerHTML = `<div class="big">${H[k].emoji}</div>${H[k].name}: <b>${all.filter(a=>a.house===k).length}</b>`;
+    tally.appendChild(d);
+  });
+  const tb = $("tbl").querySelector("tbody"); tb.innerHTML = "";
+  all.forEach(a=>{
+    const tr = document.createElement("tr");
+    [a.name, H[a.house].name, a.chosen?"Yes":"No"].forEach(t=>{ const td=document.createElement("td"); td.textContent=t; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
+function csv(){
+  const esc = s => `"${String(s).replace(/"/g,'""')}"`;
+  const rows = [["name","house","chosen_by_child"], ...store.get().map(a=>[a.name,H[a.house].name,a.chosen])];
+  const blob = new Blob([rows.map(r=>r.map(esc).join(",")).join("\n")], {type:"text/csv"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "sorting-results.csv"; a.click();
+}
+
+/* ---------- Wiring ---------- */
+$("startBtn").onclick = start;
+$("nameIn").addEventListener("keydown", e => { if(e.key==="Enter") start(); });
+$("againBtn").onclick = () => { $("nameIn").value=""; $("hatCer").className="hat think"; show("welcome"); };
+$("replayBtn").onclick = () => say(`${name}, you are in ${H[house].name}. ${H[house].traits.join(", ")}. ${H[house].stretch}`);
+$("muteBtn").onclick = () => { muted = !muted; $("muteBtn").textContent = muted ? "🔇" : "🔊"; if(muted && "speechSynthesis" in window) speechSynthesis.cancel(); };
+$("teacherBtn").onclick = teacherView;
+$("backBtn").onclick = () => show("welcome");
+$("csvBtn").onclick = csv;
+$("clearBtn").onclick = () => { if(confirm("Delete all saved results on this device?")){ store.set([]); teacherView(); } };
+document.addEventListener("keydown", e => {         // keys 1-4 answer
+  if(!$("survey").classList.contains("hidden") && /^[1-4]$/.test(e.key)){ const b=$("opts").children[+e.key-1]; b && b.click(); }
+});
+// Voice option is teacher-enabled: show with #voice in the URL
+if(SR && location.hash.includes("voice")) $("voiceOpt").classList.remove("hidden");
+if(location.hash.includes("teacher")) teacherView();
+</script>
+</body>
+</html>
