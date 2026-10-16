@@ -5,8 +5,9 @@
 2. Hat asks the child's name, listens, and confirms ("Did I hear… Luna?"). Host can type the name silently as a fallback.
 3. The host phone prompts **"Which house for Luna?"**. The host taps the house while the Hat says "keep very still while I think".
 4. Hat muses and quips: cold-read observations, a tempting decoy house, a "hold on…" doubt, then hints at the real house.
-5. **🔇 Too noisy** button (host): pauses the Hat mid-sentence ("I can't hear very well with all this noise"). Tap **▶ Quiet now** and it resumes ("Now, where was I?") from the interrupted line. Works during listening too.
-6. "Better be… RAVENCLAW!", the house table updates, then a house dare and "Next wizard, step forward!"
+5. **💭 Keep musing** (host): each tap queues an extra rambling segment (tangents, doubts, more house hints, never repeating) that plays after the current one, before the reveal. Stack as many as you like; it disappears once the reveal starts.
+6. **🔇 Too noisy** button (host): pauses the Hat mid-sentence ("I can't hear very well with all this noise"). Tap **▶ Quiet now** and it resumes ("Now, where was I?") from the interrupted line. Works during listening too.
+7. "Better be… RAVENCLAW!", the house table updates, then a house dare and "Next wizard, step forward!"
 
 **House table:** 2×2 cards of who is in which house with counts; tap a name to remove a mistake. Spoken scoreboard and Clear in ⚙.
 **Setup:** serve over HTTPS (GitHub Pages / Netlify); Android + Chrome recommended; screen stays awake; ⚙ has voice picker.

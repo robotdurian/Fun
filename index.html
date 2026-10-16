@@ -19,9 +19,10 @@ body.caps #cap{display:block}
 #host{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 84px);display:none;justify-content:center;align-items:center;gap:14px}
 #host button{width:58px;height:58px;border-radius:50%;background:transparent;border:2px solid var(--dim);color:var(--ink);font-size:1.3rem}
 #host input{background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:12px;padding:10px;width:180px;display:none}
-#noiseBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 18px);display:none;
-  background:transparent;color:var(--ink);border:2px solid var(--dim);border-radius:99px;padding:14px 26px;font-size:1.1rem}
-#noiseBtn.on{border-color:var(--gold);color:var(--gold)}
+#bar{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);display:none;justify-content:center;gap:12px}
+#bar button{background:transparent;color:var(--ink);border:2px solid var(--dim);border-radius:99px;padding:14px 18px;font-size:1.05rem}
+#bar button.on{border-color:var(--gold);color:var(--gold)}
+#museBtn{display:none}
 #picker{display:none;text-align:center;width:min(94vw,420px)}
 #picker h2{font-size:1.15rem;font-weight:normal;margin:0 0 12px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
@@ -59,7 +60,7 @@ summary::-webkit-details-marker{display:none}
 <button id="big">Wake the Hat</button>
 <div id="cap"></div>
 <div id="host"><input id="hostName" type="text" placeholder="type name, Enter" aria-label="Type the child's name"></div>
-<button id="noiseBtn">🔇 Too noisy</button>
+<div id="bar"><button id="noiseBtn">🔇 Too noisy</button><button id="museBtn">💭 Keep musing</button></div>
 
 <script>
 "use strict";
@@ -96,6 +97,23 @@ const NEUTRAL = [
   "Oh, you've got something in there. A big dream, perhaps? Don't tell me, I like to guess."
 ];
 
+const TANGENTS = [
+  "You know, I was a very ambitious sock before I became a hat. Long story. Don't ask about the toe.",
+  "A thousand years I have sat on that shelf. A thousand years! Nobody ever asks how I am.",
+  "I once sorted a wizard who tried to bribe me with a chocolate frog. It worked. Don't tell anyone.",
+  "Mind you, the last head I wore smelled of pickled onions. Yours is much better.",
+  "I do enjoy thinking. It's most of what hats do, really. That and getting hair in the seams.",
+  "I get terribly dizzy when I'm indecisive. Give me a moment. It's all going round and round.",
+  "Between you and me, Gryffindors are loud, Ravenclaws are smug, and Hufflepuffs always have biscuits.",
+  "Ooh, hold on. I think I have a thought stuck in my brim."
+];
+const DOUBTS = [
+  "No, wait. Wait, wait, wait. That's not right either.",
+  "Hmm. Is it that? Or is it just indigestion? It's very hard to tell with a hat.",
+  "Oh, this is a tricky one. Very tricky. My brim is sweating.",
+  "I thought I had decided, but now I'm not sure at all. Give me a minute.",
+  "Let me look at that from another angle. Tilt your head. Not that much!"
+];
 const NOISY  = ["Oh dear. I can't hear very well with all this noise. I shall wait until it is quieter.",
                 "Goodness me, my brim is ringing. I can't hear a thing. I'll wait for a little hush."];
 const RESUME = ["Ah, that's better. Now, where was I?","Mmm, much better. Where were we?"];
@@ -316,7 +334,8 @@ function pickHouse(who){                                   // host chooses the h
 }
 
 /* ================= THE SHOW ================= */
-let name="", house=null, busy=false;
+let name="", house=null, busy=false, museQueued=0;
+const showMuse = () => { $("museBtn").textContent = museQueued ? `💭 Keep musing (${museQueued})` : "💭 Keep musing"; };
 const fill = t => t.replace(/\{n\}/g, name);
 const pick = pickOne;
 async function getName(){
@@ -336,28 +355,38 @@ async function getName(){
 }
 async function runChild(){
   if(busy) return; busy=true; $("big").style.display="none"; $("table").style.display="none"; $("menu").open=false; setStatus("");
-  $("noiseBtn").style.display="block"; magic();
+  $("bar").style.display="flex"; magic();
   await sayChain([{t:"Ahhh. At last, a head beneath me. Hmmmm…",s:"slow"},{t:"Tell me, young wizard, what is your name?"}]);
   name = (await getName()) || "Young Wizard";
   const choosing = pickHouse(name);                         // host picks while the Hat is talking
   await sayChain([{t:`${name}.`,s:"slow"},{t:"Splendid. Now keep very still while I think."}]);
   house = await choosing;
   const decoy = pick(Object.keys(H).filter(k=>k!==house));
+  const n1 = pick(NEUTRAL), n2 = pick(NEUTRAL.filter(x=>x!==n1));
   const seg = [
-    [{t:`Hmmmm… ${name}. Yes. Yes, a head. And a very interesting one.`,s:"slow"}, {t:pick(NEUTRAL)}],
+    [{t:`Hmmmm… ${name}. Yes. Yes, a head. And a very interesting one.`,s:"slow"}, {t:n1}],
     [{t:"Let me see where you might belong…",s:"whisper"}, {t:pick(H[decoy].hints)}, {t:`Hmm. A touch of ${H[decoy].name}. Tempting. Very tempting.`,s:"whisper"}, {t:"But hold on, hold on…",s:"whisper"}],
-    [{t:"Oh! What's this?"}, {t:pick(H[house].hints)}, {t:pick(NEUTRAL)}, {t:"Ohhh. That changes things. That changes everything."}],
+    [{t:"Oh! What's this?"}, {t:pick(H[house].hints)}, {t:n2}, {t:"Ohhh. That changes things. That changes everything."}],
     [{t:"Hm hm hm. Yes. No. Yes… Oh! I know exactly where to put you.",s:"slow"}, {t:"Better be…",s:"slow"}, {t:H[house].name.toUpperCase()+"!",s:"excited"}]
   ];
   murmur();
-  for(const s of seg) await sayChain(s.map(c=>({...c,t:fill(c.t)})));
+  const used = new Set(), fresh = pool => { const left=pool.filter(x=>!used.has(x)), t=pick(left.length?left:pool); used.add(t); return t; };
+  const extraMuse = () => [{t:fresh(TANGENTS)},{t:fresh(H[pick(Object.keys(H))].hints)},{t:fresh(DOUBTS),s:"whisper"}];
+  museQueued = 0; $("museBtn").style.display="inline-block"; showMuse();
+  for(let i=0;i<seg.length;i++){
+    if(i===seg.length-1) $("museBtn").style.display="none";       // too late to ramble once the reveal starts
+    else { /* keep rambling on demand */ }
+    await sayChain(seg[i].map(c=>({...c,t:fill(c.t)})));
+    while(i<seg.length-1 && museQueued>0){ museQueued--; showMuse(); await sayChain(extraMuse().map(c=>({...c,t:fill(c.t)}))); }
+  }
+  $("museBtn").style.display="none";
   fanfare();
   const all=store.get(); all.push({name,house,ts:Date.now()}); store.set(all);
   renderTable(); $("table").style.display="block";         // table appears as they're sorted
   await sleep(700);
   const h=H[house];
   await sayChain([{t:`${name}, you are ${h.traits.join(", ")}. Wear it proudly.`},{t:h.dare,s:"excited"},{t:"Next wizard, step forward!",s:"slow"}]);
-  busy=false; $("noiseBtn").style.display="none"; $("noiseBtn").textContent="🔇 Too noisy";
+  busy=false; $("bar").style.display="none"; $("museBtn").style.display="none"; $("noiseBtn").textContent="🔇 Too noisy";
   $("big").textContent="Next child"; $("big").style.display="";
 }
 
@@ -370,6 +399,7 @@ async function unlock(){
 document.addEventListener("visibilitychange", async()=>{ if(document.visibilityState==="visible"){ try{ if("wakeLock" in navigator) await navigator.wakeLock.request("screen"); }catch{} } });
 $("big").onclick = async () => { await unlock(); runChild(); };
 $("noiseBtn").onclick = togglePause;
+$("museBtn").onclick = () => { museQueued++; showMuse(); };
 $("micChk").onchange = e => { micOn = e.target.checked && !!SR; if(e.target.checked && !SR){ e.target.checked=false; setStatus("This browser can't listen. Type names on the phone."); } };
 $("capChk").onchange = e => document.body.classList.toggle("caps", e.target.checked);
 $("voiceSel").onchange = e => { voice = speechSynthesis.getVoices().find(v=>v.name===e.target.value) || voice; try{localStorage.setItem("hatVoice",voice.name)}catch{} };
