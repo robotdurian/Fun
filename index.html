@@ -34,6 +34,10 @@ summary::-webkit-details-marker{display:none}
   <div class="panel">
     <label><input type="checkbox" id="micChk"> Listen for spoken answers</label>
     <label><input type="checkbox" id="capChk"> Show captions</label>
+    <label><input type="checkbox" id="noiseChk" checked> Pause when the room is too noisy</label>
+    <div>Noise limit <input type="range" id="noiseRange" min="-60" max="-10" value="-34" style="width:100%"><span id="noiseVal"></span></div>
+    <div><button id="noiseTest">Check room</button><button id="noiseSet">Set limit from room</button></div>
+    <div id="noiseOut" style="font-size:.85rem;color:var(--dim)"></div>
     <label>Length <select id="lenSel"><option value="5">Short (5)</option><option value="6" selected>Normal (6)</option><option value="8">Long (8)</option></select></label>
     <label>Hat voice <select id="voiceSel"></select></label>
     <div><button id="voiceTest">Test voice</button><button id="scoreBtn">Speak scores</button></div>
@@ -234,6 +238,57 @@ function listenParse(parse){
     }catch{ micOn=false; setStatus("Mic unavailable. Use the keypad"); clearTimeout(t); }
   });
 }
+
+/* ================= NOISE GATE ================= */
+let noiseOn = true, noiseLimit = -34, lastLevel = null, noiseRun = 0;
+try{ const v=+localStorage.getItem("noiseLimit"); if(v) noiseLimit=v; }catch{}
+const NOISY = ["Whoa, whoa, whoa! Far too noisy. I cannot hear a thing over this racket. Quiet please, wizards, and I shall wait.",
+               "Goodness me! My brim is ringing. It is far too noisy for me to hear. A little hush, please."];
+const NAGS  = ["Still too noisy. I am a hat, not a trumpet.","I am waiting… my brim is very patient.","Shhhhh! Hat needs to listen.","Nothing yet. Quieter, please."];
+// Average loudness (dBFS, 75th percentile of ~60ms frames) over ms. null = unavailable, {err} = mic blocked
+async function measureLevel(ms=1100){
+  const c = ac(); if(!c || !navigator.mediaDevices) return null;
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}); }
+  catch{ return {err:true}; }
+  try{
+    await c.resume();
+    const src=c.createMediaStreamSource(stream), an=c.createAnalyser(); an.fftSize=1024; src.connect(an);
+    const buf=new Float32Array(an.fftSize), vals=[], end=performance.now()+ms;
+    while(performance.now()<end){
+      await new Promise(r=>setTimeout(r,60)); an.getFloatTimeDomainData(buf);
+      let sum=0; for(const x of buf) sum+=x*x; vals.push(20*Math.log10(Math.sqrt(sum/buf.length)||1e-6));
+    }
+    src.disconnect(); vals.sort((a,b)=>a-b);
+    return vals.length ? vals[Math.floor(vals.length*.75)] : null;
+  } finally { stream.getTracks().forEach(t=>t.stop()); }               // free the mic before speech recognition starts
+}
+function micBlocked(){ micOn=false; $("micChk").checked=false; setStatus("Mic unavailable. Use the keypad"); }
+// Resolves "ok" (quiet enough), "waited" (was noisy, now quiet), or "nomic". Abandoned if noiseRun changes (host tapped).
+async function ensureQuiet(){
+  if(!noiseOn || !micOn || !SR) return "ok";
+  const my = ++noiseRun;
+  let lvl = await measureLevel(1100);
+  if(my!==noiseRun) return "ok";
+  if(lvl && lvl.err){ micBlocked(); return "nomic"; }
+  lastLevel = lvl; if(lvl!=null) setStatus(`room ${Math.round(lvl)} dB (limit ${noiseLimit})`);
+  if(lvl==null || lvl<=noiseLimit) return "ok";
+  await say(pickOne(NOISY),"excited");
+  const t0=Date.now(); let quietSince=null, lastNag=Date.now();
+  while(my===noiseRun){
+    await sleep(600);
+    lvl = await measureLevel(900);
+    if(my!==noiseRun) return "ok";
+    if(lvl && lvl.err){ micBlocked(); return "nomic"; }
+    if(lvl!=null) setStatus(`room ${Math.round(lvl)} dB (limit ${noiseLimit})`);
+    if(lvl==null || lvl<=noiseLimit){ quietSince = quietSince || Date.now(); if(Date.now()-quietSince>1500) break; }
+    else quietSince=null;
+    if(Date.now()-lastNag>14000){ await say(pickOne(NAGS),"whisper"); lastNag=Date.now(); }
+    if(Date.now()-t0>45000) break;                                        // do not wait forever
+  }
+  if(my!==noiseRun) return "ok";
+  await say("Ah. Much better.","whisper"); return "waited";
+}
 const tapWait = () => new Promise(r => { tapResolve = r; });
 function showKeypad(n){
   const k=$("keypad"); k.innerHTML="";
@@ -245,11 +300,19 @@ const hideKeypad = () => { $("keypad").style.display="none"; };
 async function getAnswer(n, parse, reprompts){
   showKeypad(n);
   for(let t=0;t<=reprompts.length;t++){
+    // 1. make sure the room is quiet enough to hear (a host tap overrides)
+    const pre = await Promise.race([ensureQuiet(), tapWait()]);
+    if(typeof pre==="number"){ noiseRun++; try{speechSynthesis.cancel()}catch{} tapResolve=null; hideKeypad(); return pre; }
+    if(pre==="waited") await say(reprompts[0]);                         // cue again after the hush
+    // 2. listen
     const r = await Promise.race([listenParse(parse), tapWait()]);
     try{ rec && rec.abort(); }catch{}
     tapResolve = null;
     if(r!==null){ hideKeypad(); return r; }
-    if(t<reprompts.length) await say(reprompts[t]);
+    if(t<reprompts.length){
+      const loud = lastLevel!=null && lastLevel > noiseLimit-6;
+      await say(loud ? "I am struggling to hear you over the noise. Come closer, and speak up. " + reprompts[0] : reprompts[t]);
+    }
   }
   hideKeypad(); return null;
 }
@@ -350,6 +413,18 @@ $("scoreBtn").onclick = async () => { await unlock(); const all=store.get(); con
   sayChain([{t:"House points, as they stand."},...Object.keys(H).map(k=>({t:`${H[k].name}: ${t(k)}.`})),{t:all.length?"Carry on, wizards.":"Nobody has been sorted yet."}]); };
 $("clearBtn").onclick = () => { if(confirm("Delete all saved results on this phone?")) store.set([]); };
 $("stopBtn").onclick = () => { try{speechSynthesis.cancel()}catch{} location.reload(); };
+$("noiseChk").onchange = e => noiseOn = e.target.checked;
+const showLimit = () => { $("noiseVal").textContent = ` ${noiseLimit} dB`; $("noiseRange").value = noiseLimit; };
+$("noiseRange").oninput = e => { noiseLimit = +e.target.value; try{localStorage.setItem("noiseLimit",noiseLimit)}catch{}; showLimit(); };
+$("noiseTest").onclick = async () => { await unlock(); $("noiseOut").textContent="Listening to the room…";
+  const l = await measureLevel(2500);
+  $("noiseOut").textContent = !l && l!==0 ? "Could not read the mic." : l.err ? "Mic blocked. Allow microphone access." :
+    `Room: ${Math.round(l)} dB. ${l>noiseLimit?"TOO NOISY for the Hat.":"Quiet enough."}`; };
+$("noiseSet").onclick = async () => { await unlock(); $("noiseOut").textContent="Hold the room at the loudest you'd accept…";
+  const l = await measureLevel(3000);
+  if(l && !l.err){ noiseLimit = Math.max(-55,Math.min(-12,Math.round(l+6))); try{localStorage.setItem("noiseLimit",noiseLimit)}catch{}; showLimit();
+    $("noiseOut").textContent=`Limit set to ${noiseLimit} dB.`; } else $("noiseOut").textContent="Could not read the mic."; };
+showLimit();
 micOn = !!SR; $("micChk").checked = micOn;
 if(!SR) setStatus("No mic support here. Use the keypad.");
 </script>
