@@ -1,30 +1,22 @@
-# Sorting Hat Space — 4-Point Spec
+# Sorting Hat — Birthday Party Edition (4-Point Spec)
 
-**Goal:** Let a class of primary-school children take a short personality survey and be "sorted" into Gryffindor, Hufflepuff, Ravenclaw or Slytherin by a talking Sorting Hat, as a gateway to self-reflection.
+**Goal:** A talking Sorting Hat for a kids' birthday party. Each child gets a secret wizard alias, answers a short silly survey, and is sorted into Gryffindor, Hufflepuff, Ravenclaw or Slytherin in a ceremony that is personal and funny.
 
-## 1. The Survey (before the ceremony)
-- 8 child-friendly, situational questions ("A new kid sits alone at lunch…"), 4 answers each, one per house, order shuffled so the pattern isn't guessable.
-- Read-aloud by the Hat; large tap targets; works with no reading skill needed.
-- Scoring: weighted tally per house. If the top two houses are within 1 point, the Hat asks the child to **choose** (canon: "Hmm… you could go either way — what do *you* want?"). This turns sorting into reflection rather than a verdict.
-- Primary-safe: no scary or negative content, no "bad" house. Every house result is framed as a strength.
+## 1. Wizard Alias + Survey
+- Child gets a random wizard alias (e.g. "Professor Sparkly Biscuit"), re-rollable with 🎲 or typed. No real names collected.
+- 8 party-flavoured scenario questions (the last slice of cake, the mysterious door, the sneaky snake…), 4 answers each, one per house, order shuffled.
+- Tally decides the house. If the top two are within 1 point, the Hat makes the child **choose**.
 
-## 2. The Ceremony (audio + voicebot)
-- Hat speaks using on-device text-to-speech, personalised with the child's first name ("Hmm… difficult, very difficult, {name}…").
-- Synthesised ambient music, "thinking" murmur and house fanfare (Web Audio, zero asset files, mute button).
-- Optional voice answers: child can say "one / two / red / the first one" via Web Speech; tapping always works. Voice is **off by default**, teacher-enabled.
-- Reveal: dramatic pause, house crest/colours, house cheer.
+## 2. A Ceremony That Is Actually About *Them*
+- Every answer has its own Hat quip. The ceremony stitches 3–4 of the child's actual answers into a rambling monologue using their alias, notes the "hidden" second house, then a drumroll and the house cheer.
+- Hat voice: on-device text-to-speech, ranked for the best British male voices on the device, with a voice picker and Test button. Captions always shown, mute button.
+- Synthesised murmur and fanfare, animated hat, optional "answer out loud" mic mode (taps always work).
 
-## 3. Learning Alignment & Reflection
-- Result card lists the house's strengths **and a "stretch" trait** from another house (growth framing).
-- Each question maps to a Social-Emotional Learning competency (CASEL: self-awareness, social awareness, relationship skills, responsible decision-making).
-- Reflection prompts after sorting support speaking & listening and writing standards (e.g. CCSS ELA SL.K–5, W.K–5 opinion/narrative), such as "Tell a partner about a time you were brave / kind / curious / determined."
-- *Standards mapping is a starting point; confirm against your local curriculum.*
+## 3. Party Payoff
+- Result card: house crest and colours, 3 traits, score bars, and a house **mission** (roar, compliment, riddle, secret handshake) to kick off house-team games.
+- 🏆 House scoreboard for the party host: tallies and who is in which house; clear button.
 
-## 4. Class Management, Privacy & Safety
-- Teacher view (`#teacher`): class list, house tallies, CSV export, clear-all. Used for house-team activities.
-- Privacy by design: first name only, no accounts, all data in the browser (localStorage), no analytics, no audio recorded or stored.
-- Accessibility: keyboard operable, high contrast, captions of everything the Hat says, reduced-motion respected.
-- Disclaimer: unofficial fan/educational tool, not affiliated with or endorsed by the Harry Potter rights holders; **needs a licensing check before any public or commercial distribution**.
-
-## Out of scope (v1)
-LLM-generated free-form chat with the Hat. Worth adding later only behind a safe, moderated, no-retention backend.
+## 4. Simple and Safe
+- One HTML file, no install, no accounts, no network calls, nothing recorded. Aliases only, stored on the device.
+- Works on a laptop connected to the TV or a tablet. Best voice quality in Edge or Chrome desktop and on iPad with the Daniel/Arthur voices.
+- Unofficial fan-made party game, not affiliated with the Harry Potter rights holders; fine for a private party, check licensing before sharing publicly.

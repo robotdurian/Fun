@@ -51,15 +51,16 @@ table{width:100%;border-collapse:collapse}
 td,th{padding:8px;border-bottom:1px solid #4a3f78;text-align:left}
 .bars div{display:flex;align-items:center;gap:8px;margin:4px 0}
 .bars span.b{display:block;height:14px;border-radius:7px}
+select{font:inherit;padding:6px;border-radius:8px;max-width:100%}
 .sr{position:absolute;left:-9999px}
 </style>
 </head>
 <body>
 <header>
-  <h1>✦ THE SORTING HAT SPACE ✦</h1>
+  <h1>✦ THE SORTING HAT ✦</h1>
   <div>
     <button class="icon" id="muteBtn" aria-label="Toggle sound">🔊</button>
-    <button class="icon" id="teacherBtn" aria-label="Teacher view">🎓</button>
+    <button class="icon" id="teacherBtn" aria-label="House scoreboard">🏆</button>
   </div>
 </header>
 <main aria-live="polite">
@@ -68,13 +69,18 @@ td,th{padding:8px;border-bottom:1px solid #4a3f78;text-align:left}
 <section id="welcome" class="card center">
   <div class="hat">🎩</div>
   <h2>Welcome, young witch or wizard!</h2>
-  <p>The Sorting Hat has a few questions before the ceremony. There are no wrong answers!</p>
-  <p><input id="nameIn" type="text" maxlength="20" placeholder="Your first name" aria-label="Your first name"></p>
+  <p>Pick your secret wizard name, then the Hat will peek inside your head.</p>
+  <p><input id="nameIn" type="text" maxlength="28" aria-label="Your wizard name">
+     <button class="icon" id="rollBtn" aria-label="Roll a new wizard name">🎲</button></p>
   <p class="mic hidden" id="voiceOpt" style="justify-content:center">
-    <label><input type="checkbox" id="voiceOn"> Answer out loud with my voice (ask a grown-up first)</label>
+    <label><input type="checkbox" id="voiceOn"> Answer out loud with my voice</label>
   </p>
   <p><button class="btn" id="startBtn">Put on the Hat</button></p>
-  <p style="color:var(--muted);font-size:.85rem">Unofficial fan &amp; learning tool. Nothing you say is recorded. Your name stays only on this device.</p>
+  <details style="color:var(--muted);margin-top:10px"><summary>🎙️ Hat voice</summary>
+    <p><select id="voiceSel" aria-label="Hat voice"></select> <button class="icon" id="voiceTest">Test</button></p>
+    <p style="font-size:.85rem" id="voiceNote"></p>
+  </details>
+  <p style="color:var(--muted);font-size:.8rem">Unofficial fan-made party game.</p>
 </section>
 
 <!-- SURVEY -->
@@ -107,9 +113,8 @@ td,th{padding:8px;border-bottom:1px solid #4a3f78;text-align:left}
   <div class="crest" id="crest"></div>
   <div class="card" style="margin-top:16px">
     <h3>Your superpowers</h3><div id="traits"></div>
-    <h3>Your stretch challenge</h3><p id="stretch"></p>
     <h3>Your score story</h3><div class="bars" id="bars"></div>
-    <h3>Talk about it 💬</h3><ul id="reflect"></ul>
+    <h3>Your house mission 🎉</h3><p id="dare" style="font-size:1.2rem"></p>
     <p class="center"><button class="btn" id="againBtn">Next student</button>
     <button class="btn ghost" id="replayBtn">🔊 Hear it again</button></p>
   </div>
@@ -117,12 +122,10 @@ td,th{padding:8px;border-bottom:1px solid #4a3f78;text-align:left}
 
 <!-- TEACHER -->
 <section id="teacher" class="card hidden">
-  <h2>🎓 Teacher view</h2>
-  <p style="color:var(--muted)">Results are stored only in this browser. Export before clearing.</p>
+  <h2>🏆 House scoreboard</h2>
   <div id="tally" class="houses"></div>
-  <table id="tbl"><thead><tr><th>Name</th><th>House</th><th>Chosen by child?</th></tr></thead><tbody></tbody></table>
-  <p><button class="btn" id="csvBtn">Export CSV</button>
-  <button class="btn ghost" id="clearBtn">Clear all</button>
+  <table id="tbl"><thead><tr><th>Wizard</th><th>House</th><th>Chose it?</th></tr></thead><tbody></tbody></table>
+  <p><button class="btn ghost" id="clearBtn">Clear all</button>
   <button class="btn ghost" id="backBtn">Back</button></p>
 </section>
 </main>
@@ -131,49 +134,66 @@ td,th{padding:8px;border-bottom:1px solid #4a3f78;text-align:left}
 "use strict";
 /* ---------- Data ---------- */
 const H = {
-  G:{name:"Gryffindor",emoji:"🦁",color:"var(--gry)",traits:["Brave","Daring","Chivalrous"],
-     stretch:"Try pausing to listen before you leap, like a Ravenclaw would.",
-     cheer:"Courage, my friend! Gryffindor!"},
-  H:{name:"Hufflepuff",emoji:"🦡",color:"var(--huf)",traits:["Kind","Loyal","Fair"],
-     stretch:"Try speaking up first when you have a bold idea, like a Gryffindor would.",
-     cheer:"Where they are just and loyal… Hufflepuff!"},
-  R:{name:"Ravenclaw",emoji:"🦅",color:"var(--rav)",traits:["Curious","Wise","Creative"],
-     stretch:"Try turning a clever idea into action today, like a Slytherin would.",
-     cheer:"Wit beyond measure… Ravenclaw!"},
-  S:{name:"Slytherin",emoji:"🐍",color:"var(--sly)",traits:["Determined","Resourceful","Ambitious"],
-     stretch:"Try sharing the spotlight and the credit, like a Hufflepuff would.",
-     cheer:"Cunning and ambitious… Slytherin!"}
+  G:{name:"Gryffindor",emoji:"🦁",color:"var(--gry)",traits:["Brave","Daring","Loud (affectionate)"],
+     dare:"HOUSE DARE: Give your very best lion ROAR. Everyone must hear it!",
+     cheer:"Better be… GRYFFINDOR!"},
+  H:{name:"Hufflepuff",emoji:"🦡",color:"var(--huf)",traits:["Kind","Loyal","Snack-sharer"],
+     dare:"HOUSE DARE: Give a genuine compliment to someone in the room. Right now!",
+     cheer:"Better be… HUFFLEPUFF!"},
+  R:{name:"Ravenclaw",emoji:"🦅",color:"var(--rav)",traits:["Clever","Curious","Full of weird facts"],
+     dare:"HOUSE DARE: Make up a riddle and stump the room.",
+     cheer:"Better be… RAVENCLAW!"},
+  S:{name:"Slytherin",emoji:"🐍",color:"var(--sly)",traits:["Cunning","Ambitious","Excellent plans"],
+     dare:"HOUSE DARE: Invent a secret handshake for your house. Recruit a partner!",
+     cheer:"Better be… SLYTHERIN!"}
 };
-// skill = CASEL competency each question builds on
+// o = [house, text, hat's ramble about that answer]  ({n} = the child's wizard name)
 const QS = [
- {q:"A new kid is sitting all alone at lunch. What do you do?", skill:"Social awareness",
-  o:[["G","Walk right over and say hi, even if it feels scary"],["H","Invite them to sit with you and your friends"],
-     ["R","Ask them a fun question to find out what they like"],["S","Make a plan so they join the game everyone wants to play"]]},
- {q:"You find a mysterious door in the castle. What happens next?", skill:"Self-awareness",
-  o:[["G","Open it straight away!"],["H","Get a friend so no one explores alone"],
-     ["R","Study the door and look for clues first"],["S","Find the secret way to get the best view"]]},
- {q:"Your team is losing the game. What is your move?", skill:"Self-management",
-  o:[["G","Take a big risk to turn it around"],["H","Cheer on every teammate"],
-     ["R","Spot the other team's pattern"],["S","Never give up, try something new"]]},
- {q:"Which would you most want to be great at?", skill:"Self-awareness",
-  o:[["G","Being fearless"],["H","Being a loyal friend"],["R","Knowing amazing things"],["S","Reaching big goals"]]},
- {q:"A friend breaks a school rule by accident. You…", skill:"Responsible decision-making",
-  o:[["G","Stand up and say it was an accident"],["H","Stay by their side and help fix it"],
-     ["R","Work out what rule was really meant"],["S","Find a smart way to put it right quietly"]]},
- {q:"It is a rainy day. What sounds best?", skill:"Self-awareness",
-  o:[["G","An adventure game, indoors"],["H","Baking treats to share"],["R","Reading a book of mysteries"],["S","Building the biggest fort ever"]]},
- {q:"You get a hard puzzle that no one has solved. You…", skill:"Self-management",
-  o:[["G","Jump in and try right now"],["H","Ask a friend to try it with you"],
-     ["R","Think and think until it clicks"],["S","Keep trying till you crack it"]]},
- {q:"What do you want your friends to say about you?", skill:"Relationship skills",
-  o:[["G","\"You are so brave!\""],["H","\"You are so kind!\""],["R","\"You are so clever!\""],["S","\"You never give up!\""]]}
+ {q:"A giant cake appears, and there is only ONE slice left. You…",
+  o:[["G","Grab it before a dragon does","You grabbed the last slice of cake like a dragon guarding gold. Bold. Slightly sticky."],
+     ["H","Cut it up so everyone gets a bite","You split the cake so everyone got a bite. Hufflepuffs would weep happy tears."],
+     ["R","Calculate the fairest way to cut it","You did MATHS on a cake. Magnificent. Slightly worrying."],
+     ["S","Trade it for something even better","You swapped cake for something better. I respect the hustle, {n}."]]},
+ {q:"You find a mysterious glowing door. What now?",
+  o:[["G","Fling it open immediately!","You flung that door open without a second thought. My brim is trembling."],
+     ["H","Grab a friend first. Doors are scarier alone","You brought a friend to the spooky door. Smart. Sweet. Probably smells of biscuits."],
+     ["R","Read the runes and clues on it first","You studied the door before touching it. I love a nerd. Said with deep affection."],
+     ["S","Look for the secret shortcut around it","You hunted for a sneaky shortcut. Rules are more like suggestions, hmm?"]]},
+ {q:"Your team is losing the party game. Your move?",
+  o:[["G","Try something wild and risky","Your team was losing, so you did something WILD. The lion in you is roaring."],
+     ["H","Cheer for everybody, win or lose","Your team was losing and you cheered anyway. Teammates like you are worth gold."],
+     ["R","Figure out the other team's pattern","You spotted the other team's pattern. Cheeky. Brainy. Annoyingly effective."],
+     ["S","Quietly come up with a master plan","You hatched a master plan. I heard the evil cackle, don't deny it."]]},
+ {q:"Pick your magical pet!",
+  o:[["G","A fire phoenix that sets things ablaze","A fire phoenix? Brave choice. Our curtains will never recover."],
+     ["H","A fluffy creature that follows you around","A fluffy pet that follows you everywhere. Adorable. Your house is going to be very squishy."],
+     ["R","A talking owl that knows everything","An owl who knows everything. You want the cheat codes to life. Smart."],
+     ["S","A sneaky snake that hisses secrets","A snake that whispers secrets. Ooh. I'd watch my back around you, {n}."]]},
+ {q:"Someone is being left out at the party. You…",
+  o:[["G","Stand up and invite them in, loudly","You marched over and invited them in, loudly. Subtle as a troll, kind as a unicorn."],
+     ["H","Sit with them and keep them company","You sat with them. That's the best kind of magic, and it's free."],
+     ["R","Think about why and find a way to help","You worked out how to help them. A thinker AND a helper. Rare."],
+     ["S","Quietly sort it out so they're included","You quietly fixed it behind the scenes. A hero in the shadows. Very you."]]},
+ {q:"Choose your superpower!",
+  o:[["G","Fly faster than anything","You want to fly faster than anything. Speed demon! Watch out for owls."],
+     ["H","Make everyone feel happy","You want to make everyone happy. Honestly, the world needs that. Hmph, I'm tearing up."],
+     ["R","Know the answer to everything","You want to know everything. Oh, the cheek. Oh, the brain on you."],
+     ["S","Get any wish granted","You want any wish granted. Greedy and brilliant. Never change."]]},
+ {q:"Rainy day at Hogwarts. What sounds best?",
+  o:[["G","An epic adventure game","You picked an epic adventure game on a rainy day. Of course you did."],
+     ["H","Baking treats to share","Baking treats to share! I smell cinnamon and good character."],
+     ["R","Curling up with a mystery book","You'd curl up with a mystery book. Please recommend one. I have no hands."],
+     ["S","Building the biggest blanket fort ever","You'd build the biggest blanket fort in history, and rule it. Obviously."]]},
+ {q:"What do you want your friends to say about you?",
+  o:[["G","\"You are SO brave!\"","You'd love to be called brave. Funny, so did I, until I became a hat."],
+     ["H","\"You are SO kind!\"","You want to be known as kind. That's the strongest magic of all."],
+     ["R","\"You are SO clever!\"","You want to be called clever. Well. I'm a hat. I have opinions on that."],
+     ["S","\"You never give up!\"","You want to be known for never giving up. I can feel the determination from here."]]}
 ];
-const REFLECT = {
-  G:["Tell a partner about a time you were brave. What did you feel inside?","How can being brave help someone else?"],
-  H:["Tell a partner about a time you were kind. How did it change the day?","What does being fair look like in our class?"],
-  R:["What is something you are curious about? How could you find out more?","Teach a partner something you know."],
-  S:["Tell a partner about a goal you reached. What helped you?","How can you share credit when a team wins?"]
-};
+const ADJ = ["Wobbly","Sparkly","Grumpy","Fluffy","Mighty","Sneaky","Giggly","Thunder","Mystic","Cosmic","Zesty","Moonlit"];
+const NOUN = ["Wombat","Pickle","Wand","Dragon","Biscuit","Goblin","Owl","Noodle","Cauldron","Toad","Broomstick","Potion"];
+const TITLE = ["Professor","Captain","Lord","Lady","Sir","Madam","Wizard","Baron"];
+const roll = () => { const r=a=>a[Math.floor(Math.random()*a.length)]; return `${r(TITLE)} ${r(ADJ)} ${r(NOUN)}`; };
 const NUMWORDS = {1:["one","1","first","won"],2:["two","2","second","too","to"],3:["three","3","third"],4:["four","4","fourth","for"]};
 
 /* ---------- Helpers ---------- */
@@ -202,22 +222,44 @@ const murmur = () => [220,247,262,247].forEach((f,i)=>tone(f,.7,"sine",.05,i*.35
 const fanfare = () => [392,392,523,659,784].forEach((f,i)=>tone(f,.6,"square",.05,i*.18));
 
 let voice = null;
+// Higher = better Hat. Natural/neural British male voices first, robotic/female/non-GB last.
+const VOICE_RANK = [
+  [/Ryan.*(Online|Natural)/i,100],[/Arthur/i,95],[/Google UK English Male/i,90],[/Oliver/i,88],
+  [/Daniel/i,85],[/George/i,80],[/Thomas/i,70],[/Rishi/i,0]
+];
+function voiceScore(v){
+  if(!/^en[-_]GB/i.test(v.lang)) return /^en/i.test(v.lang) ? 5 : -1;
+  let sc = 20;
+  for(const [re,pts] of VOICE_RANK) if(re.test(v.name)){ sc = Math.max(sc,pts); }
+  if(/Natural|Online|Premium|Enhanced/i.test(v.name)) sc += 5;
+  return sc;
+}
+function rankedVoices(){
+  return speechSynthesis.getVoices().map(v=>({v,sc:voiceScore(v)})).filter(x=>x.sc>=0).sort((a,b)=>b.sc-a.sc);
+}
 function pickVoice(){
-  const vs = speechSynthesis.getVoices();
-  voice = vs.find(v=>/en-GB/i.test(v.lang) && /male|daniel|google uk english male/i.test(v.name)) ||
-          vs.find(v=>/en-GB/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null;
+  const list = rankedVoices(); if(!list.length) return;
+  let saved = null; try{ saved = localStorage.getItem("hatVoice"); }catch{}
+  voice = (saved && list.find(x=>x.v.name===saved)?.v) || list[0].v;
+  const sel = $("voiceSel"); sel.innerHTML = "";
+  list.slice(0,12).forEach(x=>{
+    const o = document.createElement("option"); o.value = x.v.name;
+    o.textContent = `${x.v.name} (${x.v.lang})${x.sc>=80?" ★":""}`; o.selected = x.v===voice; sel.appendChild(o);
+  });
+  $("voiceNote").textContent = list[0].sc>=80 ? "★ = best British Hat voices found on this device." :
+    "No premium British voice found. On Edge/Windows install 'Microsoft Ryan'; on iPhone/iPad add 'Daniel' or 'Arthur' in Settings > Accessibility > Spoken Content.";
 }
 if("speechSynthesis" in window){ speechSynthesis.onvoiceschanged = pickVoice; pickVoice(); }
 function say(text, el){
   if(el) el.textContent = text;           // always show captions
   return new Promise(res => {
-    if(muted || !("speechSynthesis" in window)){ setTimeout(res, Math.min(3500, 600+text.length*40)); return; }
+    if(muted || !("speechSynthesis" in window)){ setTimeout(res, Math.min(4500, 700+text.length*45)); return; }
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    const u = new SpeechSynthesisUtterance(text.replace(/\bHuf+le/g,"Huffle"));
     if(voice) u.voice = voice;
-    u.pitch = .6; u.rate = .88;
+    u.pitch = .65; u.rate = .92;
     u.onend = res; u.onerror = res;
-    setTimeout(res, 12000);               // safety
+    setTimeout(res, 15000);               // safety
     speechSynthesis.speak(u);
   });
 }
@@ -244,17 +286,16 @@ function listen(opts, onPick){
 }
 
 /* ---------- State ---------- */
-let name = "", scores = {G:0,H:0,R:0,S:0}, qi = 0, order = [], voiceMode = false, chosen = false, house = null;
+let name = "", answers = [], scores = {G:0,H:0,R:0,S:0}, qi = 0, order = [], voiceMode = false, chosen = false, house = null;
 
 /* ---------- Flow ---------- */
 async function start(){
-  name = $("nameIn").value.trim().replace(/[<>]/g,"");
-  if(!name){ $("nameIn").focus(); return; }
+  name = $("nameIn").value.trim().replace(/[<>]/g,"") || roll();
   voiceMode = $("voiceOn").checked && !!SR;
-  scores = {G:0,H:0,R:0,S:0}; qi = 0; chosen = false; order = shuffle(QS);
+  scores = {G:0,H:0,R:0,S:0}; answers = []; qi = 0; chosen = false; order = shuffle(QS);
   ac() && ac().resume(); magic();
   show("survey");
-  await say(`Ah, ${name}! Welcome, welcome. Answer honestly, and I shall see what is inside your head.`, $("hatText"));
+  await say(`Ah, ${name}! Welcome, welcome. Answer honestly, and I shall see what is inside that head of yours.`, $("hatText"));
   ask();
 }
 function ask(){
@@ -267,7 +308,7 @@ function ask(){
     const b = document.createElement("button");
     b.className = "opt"; b.innerHTML = `<span class="n">${i+1}</span><span></span>`;
     b.lastChild.textContent = o[1];
-    b.onclick = () => pick(o[0]);
+    b.onclick = () => pick(o);
     box.appendChild(b);
   });
   $("micRow").classList.toggle("hidden", !voiceMode);
@@ -275,12 +316,12 @@ function ask(){
   const reading = say(Q.q + " " + opts.map((o,i)=>`${i+1}. ${o[1]}`).join(". "), $("hatText"));
   $("hatText").textContent = "Listen carefully…";
   reading.then(()=>{ $("hatS").classList.remove("talk"); });
-  $("micBtn").onclick = () => { speechSynthesis.cancel(); listen(opts, i => pick(opts[i][0])); };
+  $("micBtn").onclick = () => { speechSynthesis.cancel(); listen(opts, i => pick(opts[i])); };
   window._cur = opts;
 }
-function pick(h){
+function pick(o){
   try{ speechSynthesis.cancel(); rec && rec.abort(); }catch{}
-  scores[h]++; tone(660,.2,"triangle");
+  scores[o[0]]++; answers.push(o); tone(660,.2,"triangle");
   qi++;
   if(qi < QS.length) ask(); else finish();
 }
@@ -302,15 +343,28 @@ async function finish(){
     say(`Hmm, difficult, very difficult, ${name}. You could go to ${H[top[0]].name} or ${H[second[0]].name}. Where do you want to go?`, $("choiceText"));
   } else ceremony(top[0]);
 }
+const pickOne = a => a[Math.floor(Math.random()*a.length)];
+const fill = t => t.replace(/\{n\}/g, name);
 async function ceremony(k){
   house = k; show("ceremony"); murmur();
-  await say(`Hmm… ${name}… I see courage… I see kindness… a good mind, too… and a hunger to prove yourself.`, $("cerText"));
-  await sleep(500);
-  await say("Where shall I put you?", $("cerText"));
-  await sleep(800);
+  const hatEl = $("hatCer"), txt = $("cerText");
+  const mine = answers.filter(a=>a[0]===k), others = answers.filter(a=>a[0]!==k);
+  const second = Object.entries(scores).filter(([x])=>x!==k).sort((a,b)=>b[1]-a[1])[0][0];
+  const quirk = pickOne(others.filter(a=>a[0]===second).concat(others));   // an answer from a different house
+  const lines = [
+    `Hmmmm. ${name}. Oh my. Oh my, oh my. Where do I even begin?`,
+    mine.length ? fill(mine[0][2]) : null,
+    quirk ? fill(quirk[2]) : null,
+    mine.length>1 ? fill(mine[1][2]) : null,
+    `${scores[k]} of your ${QS.length} answers shouted ${H[k].name}, and a little ${H[second].name} is hiding in there too. Don't look at me like that.`,
+    "Hmmmm. Difficult. Very difficult. Hm hm hm.",
+    "Right. I've decided."
+  ].filter(Boolean);
+  for(const l of lines){ hatEl.className = "hat talk"; await say(l, txt); hatEl.className = "hat think"; await sleep(450); }
+  tone(110,1,"sawtooth",.05); await sleep(1000);              // drumroll gap
   fanfare();
-  $("hatCer").classList.remove("think"); $("hatCer").classList.add("talk");
-  await say(H[k].cheer.toUpperCase().replace(/\.\.\./g,"…"), $("cerText"));
+  hatEl.className = "hat talk";
+  await say(H[k].cheer, txt);
   save(k); showResult(k);
 }
 function save(k){
@@ -323,16 +377,15 @@ function showResult(k){
   const c = $("crest"); c.style.background = h.color;
   c.innerHTML = `<div class="big">${h.emoji}</div><h2></h2><p></p>`;
   c.querySelector("h2").textContent = `${name}, you are in ${h.name}!`;
-  c.querySelector("p").textContent = chosen ? "You chose your house, and the Hat trusts your choice." : "The Hat sees the best in you.";
+  c.querySelector("p").textContent = chosen ? "You chose it yourself, and the Hat approves." : "The Hat has spoken!";
   $("traits").innerHTML = ""; h.traits.forEach(t=>{ const s=document.createElement("span"); s.className="tag"; s.textContent=t; $("traits").appendChild(s); });
-  $("stretch").textContent = h.stretch;
   $("bars").innerHTML = "";
   Object.keys(H).forEach(x=>{
     const d = document.createElement("div");
     d.innerHTML = `<span style="width:7em">${H[x].emoji} ${H[x].name}</span><span class="b" style="width:${scores[x]/QS.length*60+4}%;background:${H[x].color}"></span><span>${scores[x]}</span>`;
     $("bars").appendChild(d);
   });
-  $("reflect").innerHTML = ""; REFLECT[k].forEach(r=>{ const li=document.createElement("li"); li.textContent=r; $("reflect").appendChild(li); });
+  $("dare").textContent = h.dare;
 }
 
 /* ---------- Teacher view ---------- */
@@ -351,29 +404,25 @@ function teacherView(){
     tb.appendChild(tr);
   });
 }
-function csv(){
-  const esc = s => `"${String(s).replace(/"/g,'""')}"`;
-  const rows = [["name","house","chosen_by_child"], ...store.get().map(a=>[a.name,H[a.house].name,a.chosen])];
-  const blob = new Blob([rows.map(r=>r.map(esc).join(",")).join("\n")], {type:"text/csv"});
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "sorting-results.csv"; a.click();
-}
 
 /* ---------- Wiring ---------- */
 $("startBtn").onclick = start;
 $("nameIn").addEventListener("keydown", e => { if(e.key==="Enter") start(); });
-$("againBtn").onclick = () => { $("nameIn").value=""; $("hatCer").className="hat think"; show("welcome"); };
-$("replayBtn").onclick = () => say(`${name}, you are in ${H[house].name}. ${H[house].traits.join(", ")}. ${H[house].stretch}`);
+$("againBtn").onclick = () => { $("nameIn").value=roll(); $("hatCer").className="hat think"; show("welcome"); };
+$("replayBtn").onclick = () => say(`${name}, you are in ${H[house].name}. ${H[house].dare}`);
 $("muteBtn").onclick = () => { muted = !muted; $("muteBtn").textContent = muted ? "🔇" : "🔊"; if(muted && "speechSynthesis" in window) speechSynthesis.cancel(); };
 $("teacherBtn").onclick = teacherView;
 $("backBtn").onclick = () => show("welcome");
-$("csvBtn").onclick = csv;
 $("clearBtn").onclick = () => { if(confirm("Delete all saved results on this device?")){ store.set([]); teacherView(); } };
 document.addEventListener("keydown", e => {         // keys 1-4 answer
   if(!$("survey").classList.contains("hidden") && /^[1-4]$/.test(e.key)){ const b=$("opts").children[+e.key-1]; b && b.click(); }
 });
-// Voice option is teacher-enabled: show with #voice in the URL
-if(SR && location.hash.includes("voice")) $("voiceOpt").classList.remove("hidden");
-if(location.hash.includes("teacher")) teacherView();
+$("rollBtn").onclick = () => { $("nameIn").value = roll(); magic(); };
+$("voiceSel").onchange = e => { voice = speechSynthesis.getVoices().find(v=>v.name===e.target.value) || voice; try{ localStorage.setItem("hatVoice", voice.name); }catch{} };
+$("voiceTest").onclick = () => { ac() && ac().resume(); say("Hmmmm. Difficult. Very difficult. I see plenty of courage, and not a bad mind either.", $("voiceNote")); };
+$("nameIn").value = roll();
+if(SR) $("voiceOpt").classList.remove("hidden");
+if(location.hash.includes("scores")) teacherView();
 </script>
 </body>
 </html>
