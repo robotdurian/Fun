@@ -22,7 +22,9 @@ body.caps #cap{display:block}
 #bar{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);display:none;justify-content:center;gap:12px}
 #bar button{background:transparent;color:var(--ink);border:2px solid var(--dim);border-radius:99px;padding:14px 18px;font-size:1.05rem}
 #bar button.on{border-color:var(--gold);color:var(--gold)}
-#museBtn{display:none}
+#museBtn,#revealBtn{display:none}
+#bar{flex-wrap:wrap;gap:8px}
+#bar button{padding:12px 14px;font-size:.98rem}
 #picker{display:none;text-align:center;width:min(94vw,420px)}
 #picker h2{font-size:1.15rem;font-weight:normal;margin:0 0 12px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
@@ -60,7 +62,7 @@ summary::-webkit-details-marker{display:none}
 <button id="big">Wake the Hat</button>
 <div id="cap"></div>
 <div id="host"><input id="hostName" type="text" placeholder="type name, Enter" aria-label="Type the child's name"></div>
-<div id="bar"><button id="noiseBtn">🔇 Too noisy</button><button id="museBtn">💭 Keep musing</button></div>
+<div id="bar"><button id="noiseBtn">🔇 Too noisy</button><button id="museBtn">💭 Keep musing</button><button id="revealBtn">⏭ Reveal now</button></div>
 
 <script>
 "use strict";
@@ -167,7 +169,7 @@ const mkUtt = c => { const u=new SpeechSynthesisUtterance(c.t); if(voice) u.voic
   const st=STYLE[c.s||"normal"]; u.rate=st.rate; u.pitch=st.pitch; return u; };
 
 /* ---- pause ("too noisy") ---- */
-let paused=false, pauseCount=0, resumeWaiters=[], abortSpeech=()=>{};
+let skipSay=false, paused=false, pauseCount=0, resumeWaiters=[], abortSpeech=()=>{};
 const waitResume = () => paused ? new Promise(r=>resumeWaiters.push(r)) : Promise.resolve();
 function speakNow(t, s){                                  // raw speech that ignores the pause flag
   cap(t);
@@ -197,7 +199,9 @@ async function sayChain(chunks){
   chunks = chunks.filter(Boolean);
   let i=0;
   while(i<chunks.length){
+    if(skipSay) return;
     await waitResume();
+    if(skipSay) return;
     if(!ttsOK()){ cap(chunks[i].t); await sleep(Math.min(4500,600+chunks[i].t.length*45)); i++; continue; }
     i += await speakQueue(chunks.slice(i));
   }
@@ -372,21 +376,22 @@ async function runChild(){
   murmur();
   const used = new Set(), fresh = pool => { const left=pool.filter(x=>!used.has(x)), t=pick(left.length?left:pool); used.add(t); return t; };
   const extraMuse = () => [{t:fresh(TANGENTS)},{t:fresh(H[pick(Object.keys(H))].hints)},{t:fresh(DOUBTS),s:"whisper"}];
-  museQueued = 0; $("museBtn").style.display="inline-block"; showMuse();
-  for(let i=0;i<seg.length;i++){
-    if(i===seg.length-1) $("museBtn").style.display="none";       // too late to ramble once the reveal starts
-    else { /* keep rambling on demand */ }
+  museQueued = 0; skipSay = false; showMuse();
+  $("museBtn").style.display="inline-block"; $("revealBtn").style.display="inline-block";
+  for(let i=0; i<seg.length-1 && !skipSay; i++){                  // every segment except the reveal
     await sayChain(seg[i].map(c=>({...c,t:fill(c.t)})));
-    while(i<seg.length-1 && museQueued>0){ museQueued--; showMuse(); await sayChain(extraMuse().map(c=>({...c,t:fill(c.t)}))); }
+    while(!skipSay && museQueued>0){ museQueued--; showMuse(); await sayChain(extraMuse().map(c=>({...c,t:fill(c.t)}))); }
   }
-  $("museBtn").style.display="none";
+  $("museBtn").style.display="none"; $("revealBtn").style.display="none";
+  skipSay = false; museQueued = 0;                                  // reveal always plays in full
+  await sayChain(seg[seg.length-1].map(c=>({...c,t:fill(c.t)})));
   fanfare();
   const all=store.get(); all.push({name,house,ts:Date.now()}); store.set(all);
   renderTable(); $("table").style.display="block";         // table appears as they're sorted
   await sleep(700);
   const h=H[house];
   await sayChain([{t:`${name}, you are ${h.traits.join(", ")}. Wear it proudly.`},{t:h.dare,s:"excited"},{t:"Next wizard, step forward!",s:"slow"}]);
-  busy=false; $("bar").style.display="none"; $("museBtn").style.display="none"; $("noiseBtn").textContent="🔇 Too noisy";
+  busy=false; $("bar").style.display="none"; $("museBtn").style.display="none"; $("revealBtn").style.display="none"; $("noiseBtn").textContent="🔇 Too noisy";
   $("big").textContent="Next child"; $("big").style.display="";
 }
 
@@ -400,6 +405,9 @@ document.addEventListener("visibilitychange", async()=>{ if(document.visibilityS
 $("big").onclick = async () => { await unlock(); runChild(); };
 $("noiseBtn").onclick = togglePause;
 $("museBtn").onclick = () => { museQueued++; showMuse(); };
+$("revealBtn").onclick = () => {                                   // cut the rambling short and go straight to the reveal
+  skipSay = true; museQueued = 0; $("museBtn").style.display="none"; $("revealBtn").style.display="none";
+  abortSpeech(); try{ speechSynthesis.cancel(); }catch{} };
 $("micChk").onchange = e => { micOn = e.target.checked && !!SR; if(e.target.checked && !SR){ e.target.checked=false; setStatus("This browser can't listen. Type names on the phone."); } };
 $("capChk").onchange = e => document.body.classList.toggle("caps", e.target.checked);
 $("voiceSel").onchange = e => { voice = speechSynthesis.getVoices().find(v=>v.name===e.target.value) || voice; try{localStorage.setItem("hatVoice",voice.name)}catch{} };
