@@ -10,15 +10,15 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:Georgia,serif}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
-button,select{font:inherit}
-#big{background:transparent;color:var(--gold);border:2px solid var(--dim);border-radius:24px;width:min(80vw,340px);padding:36px 12px;font-size:1.5rem}
+button,select,input{font:inherit}
+#big{background:transparent;color:var(--gold);border:2px solid var(--dim);border-radius:24px;width:min(80vw,340px);padding:44px 12px;font-size:1.6rem}
 #big:active{background:#111}
 #status{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:16px;right:60px;font-size:.8rem;color:var(--dim);min-height:1.2em}
-#cap{position:fixed;left:16px;right:16px;bottom:120px;text-align:center;color:var(--ink);font-size:1.1rem;display:none}
+#cap{position:fixed;left:16px;right:16px;bottom:130px;text-align:center;color:var(--ink);font-size:1.1rem;display:none}
 body.caps #cap{display:block}
-#keypad{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);display:none;justify-content:center;gap:14px}
-#keypad button{width:64px;height:64px;border-radius:50%;background:transparent;border:2px solid var(--dim);color:var(--ink);font-size:1.4rem}
-#keypad button:active{background:#1a1a22}
+#host{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);display:none;justify-content:center;align-items:center;gap:14px}
+#host button{width:60px;height:60px;border-radius:50%;background:transparent;border:2px solid var(--dim);color:var(--ink);font-size:1.3rem}
+#host input{background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:12px;padding:10px;width:170px;display:none}
 details{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:10px;text-align:right}
 summary{list-style:none;cursor:pointer;color:var(--dim);font-size:1.4rem;padding:4px 8px}
 summary::-webkit-details-marker{display:none}
@@ -32,13 +32,13 @@ summary::-webkit-details-marker{display:none}
 <div id="status"></div>
 <details id="menu"><summary aria-label="Settings">⚙</summary>
   <div class="panel">
-    <label><input type="checkbox" id="micChk"> Listen for spoken answers</label>
+    <label><input type="checkbox" id="micChk"> Listen for spoken names</label>
     <label><input type="checkbox" id="capChk"> Show captions</label>
+    <label><input type="checkbox" id="balChk" checked> Balance the houses</label>
     <label><input type="checkbox" id="noiseChk" checked> Pause when the room is too noisy</label>
     <div>Noise limit <input type="range" id="noiseRange" min="-60" max="-10" value="-34" style="width:100%"><span id="noiseVal"></span></div>
     <div><button id="noiseTest">Check room</button><button id="noiseSet">Set limit from room</button></div>
     <div id="noiseOut" style="font-size:.85rem;color:var(--dim)"></div>
-    <label>Length <select id="lenSel"><option value="5">Short (5)</option><option value="6" selected>Normal (6)</option><option value="8">Long (8)</option></select></label>
     <label>Hat voice <select id="voiceSel"></select></label>
     <div><button id="voiceTest">Test voice</button><button id="scoreBtn">Speak scores</button></div>
     <div><button id="clearBtn">Clear scores</button><button id="stopBtn">Stop / reset</button></div>
@@ -47,88 +47,50 @@ summary::-webkit-details-marker{display:none}
 </details>
 <button id="big">Wake the Hat</button>
 <div id="cap"></div>
-<div id="keypad"></div>
+<div id="host"><input id="hostName" type="text" placeholder="type name, Enter" aria-label="Type the child's name"></div>
 
 <script>
 "use strict";
 /* ================= DATA ================= */
 const H = {
-  G:{name:"Gryffindor",emoji:"🦁",color:"var(--gry)",traits:["Brave","Daring","Loud (affectionate)"],
-     dare:"HOUSE DARE: Give your very best lion ROAR. Everyone must hear it!",
-     cheer:"Better be… GRYFFINDOR!"},
-  H:{name:"Hufflepuff",emoji:"🦡",color:"var(--huf)",traits:["Kind","Loyal","Snack-sharer"],
-     dare:"HOUSE DARE: Give a genuine compliment to someone in the room. Right now!",
-     cheer:"Better be… HUFFLEPUFF!"},
-  R:{name:"Ravenclaw",emoji:"🦅",color:"var(--rav)",traits:["Clever","Curious","Full of weird facts"],
-     dare:"HOUSE DARE: Make up a riddle and stump the room.",
-     cheer:"Better be… RAVENCLAW!"},
-  S:{name:"Slytherin",emoji:"🐍",color:"var(--sly)",traits:["Cunning","Ambitious","Excellent plans"],
-     dare:"HOUSE DARE: Invent a secret handshake for your house. Recruit a partner!",
-     cheer:"Better be… SLYTHERIN!"}
+  G:{name:"Gryffindor",traits:["brave","daring","a little bit loud"],
+     dare:"House dare: give your very best lion ROAR!",
+     hints:["I sense a streak of daring. Do you leap before you look, {n}? Don't answer, I can see it from here.",
+            "Something fiery in here. Sparks! Tell me you haven't been jumping off the furniture.",
+            "There's a roar brewing in this one. I'm sure of it."]},
+  H:{name:"Hufflepuff",traits:["kind","loyal","a sharer of snacks"],
+     dare:"House dare: give someone in the room a proper compliment. Right now!",
+     hints:["There's a warm glow in here. Somebody shares their snacks, don't they?",
+            "I detect an enormous heart. Kindness, loyalty, and probably a few crumbs.",
+            "Oh, you're the one who notices when someone is left out, aren't you, {n}?"]},
+  R:{name:"Ravenclaw",traits:["clever","curious","full of strange facts"],
+     dare:"House dare: make up a riddle and stump the room!",
+     hints:["So many questions rattling around in here! Why this, why that, why do hats talk?",
+            "A very curious mind. Always asking but why. I love it, {n}.",
+            "Clever little thoughts whizzing about like pixies."]},
+  S:{name:"Slytherin",traits:["cunning","ambitious","excellent at plans"],
+     dare:"House dare: invent a secret handshake for your house. Recruit a partner!",
+     hints:["I sense a cunning plan. You've already worked out where the cake is, haven't you?",
+            "Ooh, ambition! Something big is being planned in here. Do share the credit.",
+            "Sneaky, resourceful, and rather good at getting your own way, I'd wager."]}
 };
-// o = [house, text, hat's ramble about that answer]  ({n} = the child's wizard name)
-const QS = [
- {q:"A giant cake appears, and there is only ONE slice left. You…",
-  o:[["G","Grab it before a dragon does","You grabbed the last slice of cake like a dragon guarding gold. Bold. Slightly sticky."],
-     ["H","Cut it up so everyone gets a bite","You split the cake so everyone got a bite. Hufflepuffs would weep happy tears."],
-     ["R","Calculate the fairest way to cut it","You did MATHS on a cake. Magnificent. Slightly worrying."],
-     ["S","Trade it for something even better","You swapped cake for something better. I respect the hustle, {n}."]]},
- {q:"You find a mysterious glowing door. What now?",
-  o:[["G","Fling it open immediately!","You flung that door open without a second thought. My brim is trembling."],
-     ["H","Grab a friend first. Doors are scarier alone","You brought a friend to the spooky door. Smart. Sweet. Probably smells of biscuits."],
-     ["R","Read the runes and clues on it first","You studied the door before touching it. I love a nerd. Said with deep affection."],
-     ["S","Look for the secret shortcut around it","You hunted for a sneaky shortcut. Rules are more like suggestions, hmm?"]]},
- {q:"Your team is losing the party game. Your move?",
-  o:[["G","Try something wild and risky","Your team was losing, so you did something WILD. The lion in you is roaring."],
-     ["H","Cheer for everybody, win or lose","Your team was losing and you cheered anyway. Teammates like you are worth gold."],
-     ["R","Figure out the other team's pattern","You spotted the other team's pattern. Cheeky. Brainy. Annoyingly effective."],
-     ["S","Quietly come up with a master plan","You hatched a master plan. I heard the evil cackle, don't deny it."]]},
- {q:"Pick your magical pet!",
-  o:[["G","A fire phoenix that sets things ablaze","A fire phoenix? Brave choice. Our curtains will never recover."],
-     ["H","A fluffy creature that follows you around","A fluffy pet that follows you everywhere. Adorable. Your house is going to be very squishy."],
-     ["R","A talking owl that knows everything","An owl who knows everything. You want the cheat codes to life. Smart."],
-     ["S","A sneaky snake that hisses secrets","A snake that whispers secrets. Ooh. I'd watch my back around you, {n}."]]},
- {q:"Someone is being left out at the party. You…",
-  o:[["G","Stand up and invite them in, loudly","You marched over and invited them in, loudly. Subtle as a troll, kind as a unicorn."],
-     ["H","Sit with them and keep them company","You sat with them. That's the best kind of magic, and it's free."],
-     ["R","Think about why and find a way to help","You worked out how to help them. A thinker AND a helper. Rare."],
-     ["S","Quietly sort it out so they're included","You quietly fixed it behind the scenes. A hero in the shadows. Very you."]]},
- {q:"Choose your superpower!",
-  o:[["G","Fly faster than anything","You want to fly faster than anything. Speed demon! Watch out for owls."],
-     ["H","Make everyone feel happy","You want to make everyone happy. Honestly, the world needs that. Hmph, I'm tearing up."],
-     ["R","Know the answer to everything","You want to know everything. Oh, the cheek. Oh, the brain on you."],
-     ["S","Get any wish granted","You want any wish granted. Greedy and brilliant. Never change."]]},
- {q:"Rainy day at Hogwarts. What sounds best?",
-  o:[["G","An epic adventure game","You picked an epic adventure game on a rainy day. Of course you did."],
-     ["H","Baking treats to share","Baking treats to share! I smell cinnamon and good character."],
-     ["R","Curling up with a mystery book","You'd curl up with a mystery book. Please recommend one. I have no hands."],
-     ["S","Building the biggest blanket fort ever","You'd build the biggest blanket fort in history, and rule it. Obviously."]]},
- {q:"What do you want your friends to say about you?",
-  o:[["G","\"You are SO brave!\"","You'd love to be called brave. Funny, so did I, until I became a hat."],
-     ["H","\"You are SO kind!\"","You want to be known as kind. That's the strongest magic of all."],
-     ["R","\"You are SO clever!\"","You want to be called clever. Well. I'm a hat. I have opinions on that."],
-     ["S","\"You never give up!\"","You want to be known for never giving up. I can feel the determination from here."]]}
+const NEUTRAL = [
+  "Plenty of room up here, {n}. Ideas rattling about like marbles in a tin.",
+  "I have sorted witches, wizards, and one very confused goat. You are far more promising than the goat.",
+  "Hold still, {n}. Your hair is tickling my brim.",
+  "Hmm. Brain, present. Heart, present. Snacks… I can smell cake.",
+  "Stop wiggling! A hat must be worn with dignity.",
+  "Ooh, a ticklish thought just went by. Gone. Never mind.",
+  "Oh, you've got something in there. A big dream, perhaps? Don't tell me, I like to guess."
 ];
-const ADJ = ["Wobbly","Sparkly","Grumpy","Fluffy","Mighty","Sneaky","Giggly","Thunder","Mystic","Cosmic","Zesty","Moonlit"];
-const NOUN = ["Wombat","Pickle","Wand","Dragon","Biscuit","Goblin","Owl","Noodle","Cauldron","Toad","Broomstick","Potion"];
-const TITLE = ["Professor","Captain","Lord","Lady","Sir","Madam","Wizard","Baron"];
-const roll = () => { const r=a=>a[Math.floor(Math.random()*a.length)]; return `${r(TITLE)} ${r(ADJ)} ${r(NOUN)}`; };
-
-const ACKS = ["Hm.","Interesting…","Mmm hm.","Ooh.","Noted.","Oh, very telling.","Ha! Well, well."];
-const HOUSE_RE = {G:/gr[iy]ff|gry|griff|lion/, H:/huff|puff|badger/, R:/raven|claw|eagle/, S:/sly|slith|snake/};
-const NUMS = ["One","Two","Three","Four"];
-
 /* ================= HELPERS ================= */
 const $ = id => document.getElementById(id);
 const FAST = location.search.includes("fast");               // test mode: shrinks waits
 const sleep = ms => new Promise(r => setTimeout(r, FAST ? ms/20 : ms));
-const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
 const pickOne = a => a[Math.floor(Math.random()*a.length)];
-const store = { get(){ try{return JSON.parse(localStorage.getItem("sortedKids")||"[]")}catch{return []} },
-                set(v){ try{localStorage.setItem("sortedKids",JSON.stringify(v))}catch{} } };
 const setStatus = t => $("status").textContent = t || "";
 const cap = t => { $("cap").textContent = t; };
-let micOn = false, qCount = 6;
+let micOn = false;
 
 /* ================= AUDIO ================= */
 let muted = false, actx = null;
@@ -189,6 +151,8 @@ function sayChain(chunks){
 }
 const say = (t, s) => sayChain([{t, s}]);
 
+
+const ACKS = [];
 /* ================= EARS (optional) ================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, tapResolve = null;
@@ -218,6 +182,20 @@ const parseYesNo = h => { const n = norm(h);
 const parseHouse = (k1,k2) => h => { const n = norm(h);
   if(HOUSE_RE[k1].test(n)) return 0; if(HOUSE_RE[k2].test(n)) return 1; return parseNum(h,2); };
 
+
+// ---- name parsing ----
+function cleanName(h){
+  let n = h.replace(/[^\p{L}\s'-]/gu," ").trim();
+  for(let i=0;i<2;i++) n = n.replace(/^(hi|hello|hey|um|uh|er|my name is|my names|name is|i am|i'm|im|it's|its|this is|call me|they call me)\s+/i,"");
+  const w = n.split(/\s+/).filter(Boolean).slice(0,3); if(!w.length) return null;
+  return w.map(x=>x[0].toUpperCase()+x.slice(1).toLowerCase()).join(" ");
+}
+const parseName = h => { const n = cleanName(h); return n ? {name:n} : -1; };
+const parseConfirm = h => { const n = norm(h);
+  if(/\b(yes|yeah|yep|yup|correct|right|that's me|thats me)\b/.test(n)) return 0;
+  if(/\b(no|nope|wrong|not)\b/.test(n)) return 1;
+  return parseName(h); };
+
 function listenParse(parse){
   if(!micOn || !SR) return new Promise(()=>{});               // keypad-only: wait for a tap
   return new Promise(res=>{
@@ -242,8 +220,8 @@ function listenParse(parse){
 /* ================= NOISE GATE ================= */
 let noiseOn = true, noiseLimit = -34, lastLevel = null, noiseRun = 0;
 try{ const v=+localStorage.getItem("noiseLimit"); if(v) noiseLimit=v; }catch{}
-const NOISY = ["Whoa, whoa, whoa! Far too noisy. I cannot hear a thing over this racket. Quiet please, wizards, and I shall wait.",
-               "Goodness me! My brim is ringing. It is far too noisy for me to hear. A little hush, please."];
+const NOISY = ["Oh dear. I can't hear very well with all this noise. I shall wait until it is quieter.",
+               "Goodness me, my brim is ringing. I can't hear a thing. I'll wait for a little hush."];
 const NAGS  = ["Still too noisy. I am a hat, not a trumpet.","I am waiting… my brim is very patient.","Shhhhh! Hat needs to listen.","Nothing yet. Quieter, please."];
 // Average loudness (dBFS, 75th percentile of ~60ms frames) over ms. null = unavailable, {err} = mic blocked
 async function measureLevel(ms=1100){
@@ -265,7 +243,7 @@ async function measureLevel(ms=1100){
 }
 function micBlocked(){ micOn=false; $("micChk").checked=false; setStatus("Mic unavailable. Use the keypad"); }
 // Resolves "ok" (quiet enough), "waited" (was noisy, now quiet), or "nomic". Abandoned if noiseRun changes (host tapped).
-async function ensureQuiet(){
+async function ensureQuiet(silentResume=false){
   if(!noiseOn || !micOn || !SR) return "ok";
   const my = ++noiseRun;
   let lvl = await measureLevel(1100);
@@ -287,114 +265,105 @@ async function ensureQuiet(){
     if(Date.now()-t0>45000) break;                                        // do not wait forever
   }
   if(my!==noiseRun) return "ok";
-  await say("Ah. Much better.","whisper"); return "waited";
+  if(!silentResume) await say("Ah. Much better.","whisper"); return "waited";
 }
+
 const tapWait = () => new Promise(r => { tapResolve = r; });
-function showKeypad(n){
-  const k=$("keypad"); k.innerHTML="";
-  for(let i=0;i<n;i++){ const b=document.createElement("button"); b.textContent=i+1; b.setAttribute("aria-label","Answer "+(i+1));
-    b.onclick=()=>{ if(tapResolve){ const r=tapResolve; tapResolve=null; r(i); } }; k.appendChild(b); }
-  k.style.display="flex";
+const hostEl = $("host"), hostIn = $("hostName");
+function showHost(n, withName){
+  hostEl.querySelectorAll("button").forEach(b=>b.remove());
+  for(let i=0;i<n;i++){ const b=document.createElement("button"); b.textContent=n===1?"▶":i+1; b.setAttribute("aria-label",n===1?"Carry on":"Answer "+(i+1));
+    b.onclick=()=>{ if(tapResolve){ const r=tapResolve; tapResolve=null; r(i); } }; hostEl.insertBefore(b,hostIn); }
+  hostIn.style.display = withName ? "block" : "none";
+  hostEl.style.display = (n||withName) ? "flex" : "none";
 }
-const hideKeypad = () => { $("keypad").style.display="none"; };
-async function getAnswer(n, parse, reprompts){
-  showKeypad(n);
+const hideHost = () => { hostEl.style.display="none"; hostIn.value=""; };
+hostIn.addEventListener("keydown", e => { if(e.key==="Enter"){ const n=cleanName(hostIn.value); hostIn.value="";
+  if(n && tapResolve){ const r=tapResolve; tapResolve=null; r({name:n}); } } });
+
+async function getAnswer(n, parse, reprompts, withName=false){
+  showHost(n, withName);
   for(let t=0;t<=reprompts.length;t++){
-    // 1. make sure the room is quiet enough to hear (a host tap overrides)
     const pre = await Promise.race([ensureQuiet(), tapWait()]);
-    if(typeof pre==="number"){ noiseRun++; try{speechSynthesis.cancel()}catch{} tapResolve=null; hideKeypad(); return pre; }
-    if(pre==="waited") await say(reprompts[0]);                         // cue again after the hush
-    // 2. listen
+    if(pre!=null && typeof pre!=="string"){ noiseRun++; try{speechSynthesis.cancel()}catch{} tapResolve=null; hideHost(); return pre; }
+    if(pre==="waited") await say(reprompts[0]);
     const r = await Promise.race([listenParse(parse), tapWait()]);
     try{ rec && rec.abort(); }catch{}
     tapResolve = null;
-    if(r!==null){ hideKeypad(); return r; }
+    if(r!==null){ hideHost(); return r; }
     if(t<reprompts.length){
       const loud = lastLevel!=null && lastLevel > noiseLimit-6;
-      await say(loud ? "I am struggling to hear you over the noise. Come closer, and speak up. " + reprompts[0] : reprompts[t]);
+      await say(loud ? "I can't hear very well over the noise. Come closer and speak up. " + reprompts[0] : reprompts[t]);
     }
   }
-  hideKeypad(); return null;
+  hideHost(); return null;
+}
+// pause between ceremony segments if the room got noisy (host can tap ▶ to skip the wait)
+async function quietGate(){
+  if(!(noiseOn && micOn && SR)) return;
+  showHost(1,false);
+  const r = await Promise.race([ensureQuiet(true), tapWait()]);
+  if(typeof r!=="string"){ noiseRun++; try{speechSynthesis.cancel()}catch{} tapResolve=null; }
+  hideHost();
+  if(r==="waited") await sayChain([{t:pick(["Now then, where was I?","Ah, that's better. Where was I?"]),s:"whisper"}]);
 }
 
 /* ================= THE SHOW ================= */
-let name="", answers=[], scores={}, chosen=false, house=null, first=true, busy=false;
+let name="", house=null, busy=false;
 const fill = t => t.replace(/\{n\}/g, name);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+async function getName(){
+  let cand=null;
+  for(let round=0; round<4; round++){
+    if(cand===null){
+      const r = await getAnswer(0, parseName, ["I didn't catch that. What is your name?","Speak up, young wizard! Your name?"], true);
+      if(!r) return null; cand = r.name;
+    }
+    await sayChain([{t:`Did I hear… ${cand}?`},{t:"Say yes, or tell me your name again."}]);
+    const c = await getAnswer(2, parseConfirm, ["Yes, or tell me your name again?"], true);
+    if(c===0 || c===null) return cand;
+    if(c===1){ cand=null; await say("Oh dear, my ears! Once more, what is your name?"); continue; }
+    if(c && c.name) cand = c.name;                           // they just said their name again; confirm that
+  }
+  return cand;
+}
+function chooseHouse(){
+  const keys = Object.keys(H);
+  if(!$("balChk").checked) return pick(keys);
+  const all = store.get(), cnt = k => all.filter(a=>a.house===k).length, min = Math.min(...keys.map(cnt));
+  return pick(keys.filter(k=>cnt(k)===min));
+}
 
 async function runChild(){
-  if(busy) return; busy=true; $("big").style.display="none"; $("menu").open=false;
-  name = roll(); answers=[]; scores={G:0,H:0,R:0,S:0}; chosen=false;
+  if(busy) return; busy=true; $("big").style.display="none"; $("menu").open=false; setStatus("");
   magic();
+  await sayChain([{t:"Ahhh. At last, a head beneath me. Hmmmm…",s:"slow"},{t:"Tell me, young wizard, what is your name?"}]);
+  name = (await getName()) || "Young Wizard";
+  await sayChain([{t:`${name}.`,s:"slow"},{t:"Splendid. Now keep very still while I think."}]);
 
-  // 1. alias, with optional re-roll
-  for(let t=0;t<3;t++){
-    await sayChain([{t:t===0?"Ahhh. A new head to peer into. Hmmm… I shall call you…":"Then how about…",s:"slow"},{t:name+"!",s:"excited"},
-                    {t:"Say yes to keep it, or say another for a new name."}]);
-    const r = await getAnswer(2, parseYesNo, ["Yes, or another?"]);
-    if(r===1 && t<2){ name = roll(); continue; }
-    break;
+  house = chooseHouse();
+  const decoy = pick(Object.keys(H).filter(k=>k!==house));
+  const seg = [
+    [{t:`Hmmmm… ${name}. Yes. Yes, a head. And a very interesting one.`,s:"slow"}, {t:pick(NEUTRAL)}],
+    [{t:"Let me see where you might belong…",s:"whisper"}, {t:pick(H[decoy].hints)}, {t:`Hmm. A touch of ${H[decoy].name}. Tempting. Very tempting.`,s:"whisper"}, {t:"But hold on, hold on…",s:"whisper"}],
+    [{t:"Oh! What's this?"}, {t:pick(H[house].hints)}, {t:pick(NEUTRAL)}, {t:"Ohhh. That changes things. That changes everything."}],
+    [{t:"Hm hm hm. Yes. No. Yes… Oh! I know exactly where to put you.",s:"slow"}, {t:"Better be…",s:"slow"}, {t:H[house].name.toUpperCase()+"!",s:"excited"}]
+  ];
+  murmur();
+  for(let i=0;i<seg.length;i++){
+    if(i>0) await quietGate();
+    await sayChain(seg[i].map(c=>({...c,t:fill(c.t)})));
   }
-  await say(`${name}. Splendid. Now answer honestly, for I can smell a fib.`, "whisper");
-  if(first){ await say("After the ding, say the number of your answer. One, two, three or four. Say repeat if you want to hear it again."); first=false; }
-
-  // 2. questions
-  const order = shuffle(QS).slice(0,qCount);
-  for(let qi=0; qi<order.length; qi++){
-    const Q = order[qi], opts = shuffle(Q.o);
-    let idx = null;
-    while(true){
-      setStatus(`Question ${qi+1} of ${order.length}`);
-      await sayChain([{t:Q.q}, ...opts.map((o,i)=>({t:`${NUMS[i]}. ${o[1]}`}))]);
-      const r = await getAnswer(4, parseOpt(opts), ["Hm? I did not catch that. One, two, three or four?","Speak up, young wizard! One, two, three or four?"]);
-      if(r==="repeat") continue; idx=r; break;
-    }
-    if(idx===null){ idx=Math.floor(Math.random()*4); await say("Cat got your tongue? Never mind, I shall choose for you.","whisper"); }
-    const o = opts[idx]; scores[o[0]]++; answers.push(o);
-    if(qi<order.length-1) await say(pickOne(ACKS),"whisper");
-  }
-
-  // 3. tie-break
-  setStatus("");
-  const ranked = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
-  let k = ranked[0][0];
-  if(ranked[0][1]-ranked[1][1] <= 1){
-    const k1=ranked[0][0], k2=ranked[1][0];
-    await sayChain([{t:`Hmmm. Difficult. Very difficult, ${name}.`,s:"slow"},{t:`You could go to ${H[k1].name}… or ${H[k2].name}.`},{t:"Where do you want to go? Say the house."}]);
-    const r = await getAnswer(2, parseHouse(k1,k2), ["Which one? Say the house name."]);
-    k = r===1 ? k2 : k1; chosen = r!==null;
-  }
-  await ceremony(k);
+  fanfare(); await sleep(900);
+  const h=H[house]; save(house);
+  await sayChain([{t:`${name}, you are ${h.traits.join(", ")}. Wear it proudly.`},{t:h.dare,s:"excited"},{t:"Next wizard, step forward!",s:"slow"}]);
   busy=false; setStatus("");
   $("big").textContent="Next child"; $("big").style.display="";
 }
-
-async function ceremony(k){
-  house=k; murmur();
-  const ranked = Object.entries(scores).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
-  const second = ranked.find(x=>x!==k), lowest = ranked[3]===k ? ranked[2] : ranked[3];
-  const mine = shuffle(answers.filter(a=>a[0]===k));
-  const rival = shuffle(answers.filter(a=>a[0]===second));
-  const odd = shuffle(answers.filter(a=>a[0]!==k && a[0]!==second));
-  const C=[]; const add=(t,s)=>t&&C.push({t:fill(t),s:s||"normal"});
-
-  add(pickOne([`Hmmmm… ${name}. Well, well, well. Let me just have a poke around in there…`,`Ooh. Ooh, ${name}. Hold still. Let me rummage about in that head of yours…`]),"slow");
-  if(mine[0]){ add(pickOne(["Now THIS is interesting.","Ooh, I like this bit."])); add(mine[0][2]); }
-  if(rival[0]||odd[0]){ const r=rival[0]||odd[0];
-    add(pickOne(["But hold on, hold on…","Hmm, but then…"]),"whisper"); add(r[2]);
-    add(`That's a bit ${H[r[0]].name}, isn't it? Hmm. Oh dear. Now I'm doubting myself.`,"whisper"); }
-  if(mine[1]){ add(pickOne(["And yet…","Then again…"])); add(mine[1][2]); add("Oh, that pulls me back. But no, no, not yet."); }
-  if(odd[0]&&rival[0]) add(odd[0][2]);
-  add(`Let me count. ${scores[k]} for ${H[k].name}… ${scores[second]} for ${H[second].name}… my brim hurts from the maths.`,"whisper");
-  add(scores[lowest]===0 ? `And not one drop of ${H[lowest].name} in you. I checked behind the ears.` : `As for ${H[lowest].name}, hardly a whisper. I'd be amazed.`,"whisper");
-  if(chosen) add(`And you asked for ${H[k].name} yourself. Who am I to argue with a wizard who knows their own mind?`);
-  add(pickOne(["Hm hm hm. Yes. No. Yes… Oh! I know exactly where to put you.","Right. Right, right, right. I've got it. I've definitely got it."]),"slow");
-  add("Better be…","slow"); add(H[k].name.toUpperCase()+"!","excited");
-  await sayChain(C);
-  fanfare(); await sleep(900);
-  const h=H[k]; save(k);
-  await sayChain([{t:`${name}, you are ${h.traits.join(", ")}. Remember your name, and wear it proudly.`},{t:h.dare,s:"excited"},{t:"Next wizard, step forward!",s:"slow"}]);
-}
-function save(k){ const all=store.get(); all.push({name,house:k,chosen,ts:Date.now()}); store.set(all); }
+const store = { get(){ try{return JSON.parse(localStorage.getItem("sortedKids")||"[]")}catch{return []} },
+                set(v){ try{localStorage.setItem("sortedKids",JSON.stringify(v))}catch{} } };
+function save(k){ const all=store.get(); all.push({name,house:k,ts:Date.now()}); store.set(all); }
 
 /* ================= WIRING ================= */
 async function unlock(){
@@ -404,9 +373,8 @@ async function unlock(){
 }
 document.addEventListener("visibilitychange", async()=>{ if(document.visibilityState==="visible"){ try{ if("wakeLock" in navigator) await navigator.wakeLock.request("screen"); }catch{} } });
 $("big").onclick = async () => { await unlock(); runChild(); };
-$("micChk").onchange = e => { micOn = e.target.checked && !!SR; if(e.target.checked && !SR){ e.target.checked=false; setStatus("This browser can't listen. Use the keypad."); } };
+$("micChk").onchange = e => { micOn = e.target.checked && !!SR; if(e.target.checked && !SR){ e.target.checked=false; setStatus("This browser can't listen. Type names on the phone."); } };
 $("capChk").onchange = e => document.body.classList.toggle("caps", e.target.checked);
-$("lenSel").onchange = e => qCount = +e.target.value;
 $("voiceSel").onchange = e => { voice = speechSynthesis.getVoices().find(v=>v.name===e.target.value) || voice; try{localStorage.setItem("hatVoice",voice.name)}catch{} };
 $("voiceTest").onclick = async () => { await unlock(); say("Hmmmm. Difficult. Very difficult. I see plenty of courage, and not a bad mind either."); };
 $("scoreBtn").onclick = async () => { await unlock(); const all=store.get(); const t=k=>all.filter(a=>a.house===k).length;
@@ -426,7 +394,7 @@ $("noiseSet").onclick = async () => { await unlock(); $("noiseOut").textContent=
     $("noiseOut").textContent=`Limit set to ${noiseLimit} dB.`; } else $("noiseOut").textContent="Could not read the mic."; };
 showLimit();
 micOn = !!SR; $("micChk").checked = micOn;
-if(!SR) setStatus("No mic support here. Use the keypad.");
+if(!SR) setStatus("No mic support here. Type names on the phone.");
 </script>
 </body>
 </html>
