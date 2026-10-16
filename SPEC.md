@@ -5,7 +5,7 @@
 6. A mysterious glowing door: fling it open / grab a friend first / read the clues / find a shortcut?
 7. Someone is left out: invite them in loudly / sit with them / work out why and help / quietly fix it?
 8. Friends should say you are: so brave / so kind / so clever / never give up?
-Type each guest's answers into ⚙ → Guests. When a child says their name the Hat matches it (tolerates mishearing), shows the match on the house screen (change it with the Survey dropdown; ★ marks the house their choices lean towards) and weaves their answers into the musing, including "Keep musing" extras.
+Fastest: run `tools/create-hat-form.gs` in script.google.com to create the Google Form + response sheet, send guests the form link, then in the app go to ⚙ → Guests → Import from a Google Form sheet and paste the copied sheet (or its published CSV link). Or type guests in by hand in ⚙ → Guests. When a child says their name the Hat matches it (tolerates mishearing), shows the match on the house screen (change it with the Survey dropdown; ★ marks the house their choices lean towards) and weaves their answers into the musing, including "Keep musing" extras.
 
 **Flow (audio-first, run from the host's phone, speaker out):**
 1. Child puts on the hat. Host taps **Wake the Hat** (or **Next child**).

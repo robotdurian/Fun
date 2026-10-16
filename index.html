@@ -40,6 +40,11 @@ body.caps #cap{display:block}
 .grow{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
 .grow button,.gitem button{background:transparent;color:var(--ink);border:1px solid var(--dim);border-radius:10px;padding:10px 14px}
 #gSave{border-color:var(--gold);color:var(--gold)}
+#sheetBox{margin:12px 0;border:1px solid var(--dim);border-radius:10px;padding:8px 10px}
+#sheetBox summary{cursor:pointer;color:var(--gold)}
+#sheetBox textarea,#sheetBox input{display:block;width:100%;background:#000;color:var(--ink);border:1px solid var(--dim);border-radius:10px;padding:10px;font-size:16px;margin-top:6px}
+.gnote{font-size:.85rem;color:var(--ink);margin:8px 0 0}
+#sheetMsg{min-height:1.2em;font-size:.85rem;color:var(--ink)}
 #gMsg{min-height:1.2em;font-size:.85rem;color:var(--ink)}
 #gList{list-style:none;margin:10px 0;padding:0}
 .gitem{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #1a1822}
@@ -77,6 +82,14 @@ summary::-webkit-details-marker{display:none}
     <div class="grow"><button type="submit" id="gSave">Add guest</button><button type="button" id="gReset">Clear form</button><button type="button" id="gClose">Done</button></div>
     <div id="gMsg"></div>
   </form>
+  <details id="sheetBox"><summary>Import from a Google Form sheet</summary>
+    <p class="gnote">In the response sheet: select all, copy, paste below. Or paste the sheet's "Publish to web" CSV link and tap Fetch.</p>
+    <textarea id="sheetPaste" rows="5" placeholder="Paste the copied sheet here (with the header row)"></textarea>
+    <div class="grow"><button type="button" id="sheetImport">Import pasted sheet</button></div>
+    <input id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" inputmode="url">
+    <div class="grow"><button type="button" id="sheetFetch">Fetch from link</button></div>
+    <div id="sheetMsg"></div>
+  </details>
   <ul id="gList"></ul>
 </div></div>
 <div id="status"></div>
@@ -427,6 +440,53 @@ function personalLines(g, house){
   [...(g.c||"")].forEach((ch,i)=>{ const q=CQ[i]&&CQ[i][ch]; if(!q) return; const t=pick(LEADS)+q; (ch===house?mine:others).push(t); });
   return { lines: shuffle(L.concat(others)), target: mine.length ? pick(mine) : null };
 }
+
+/* ---- Google Form / Sheet import ---- */
+function parseTable(text){                                      // tab-separated (copied from Sheets) or CSV with quotes
+  const delim = text.includes("\t") ? "\t" : ",", rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; } else cell+=ch; }
+    else if(ch==='"' && cell==="") q=true;
+    else if(ch===delim){ row.push(cell); cell=""; }
+    else if(ch==="\n"||ch==="\r"){ if(ch==="\r"&&text[i+1]==="\n") i++; row.push(cell); cell=""; if(row.some(c=>c.trim())) rows.push(row); row=[]; }
+    else cell+=ch; }
+  row.push(cell); if(row.some(c=>c.trim())) rows.push(row);
+  return rows;
+}
+const CHOICE_RULES = [ [[/fling|open/i,"G"],[/friend/i,"H"],[/clue|read/i,"R"],[/shortcut|secret/i,"S"]],
+                       [[/invite|loud/i,"G"],[/sit |company/i,"H"],[/work out|why/i,"R"],[/quiet|behind/i,"S"]],
+                       [[/brave/i,"G"],[/kind/i,"H"],[/clever/i,"R"],[/give up|never/i,"S"]] ];
+function toLetter(i, v){ v=(v||"").trim(); if(/^[GHRS]$/i.test(v)) return v.toUpperCase();
+  const r=CHOICE_RULES[i].find(([re])=>re.test(v)); return r ? r[1] : "-"; }
+function importSheet(text){
+  const rows=parseTable(text.trim()); if(rows.length<2) return {err:"I need the header row plus at least one guest."};
+  const head=rows[0].map(h=>h.toLowerCase());
+  const col = res => { for(const re of res){ const i=head.findIndex(h=>re.test(h)); if(i>=0) return i; } return -1; };
+  const C={ n:col([/call you/,/name/]), f:col([/food/]), a:col([/animal/]), g:col([/good at/]), p:col([/magic|power/]),
+            c:[col([/door/]), col([/left out/]), col([/friends|say about/])] };
+  if(C.n<0) return {err:"I can't find the name column. Is the header row included?"};
+  const all=guests.get(); let added=0, updated=0;
+  for(const r of rows.slice(1)){
+    const n=clip(r[C.n],20); if(!n) continue;
+    const g={ n, f:C.f>=0?clip(r[C.f],30):"", a:C.a>=0?clip(r[C.a],30):"", g:C.g>=0?clip(r[C.g],40):"", p:C.p>=0?clip(r[C.p],40):"",
+              c:C.c.map((ci,i)=>ci>=0?toLetter(i,r[ci]):"-").join("") };
+    const k=all.findIndex(x=>x.n.toLowerCase()===n.toLowerCase());
+    if(k>=0){ all[k]=g; updated++; } else { all.push(g); added++; }       // a later submission replaces an earlier one
+  }
+  guests.set(all); renderGuests(); return {added, updated};
+}
+const sheetMsg = t => { $("sheetMsg").textContent=t; };
+$("sheetImport").onclick = () => { const r=importSheet($("sheetPaste").value);
+  if(r.err) return sheetMsg(r.err); sheetMsg(`Added ${r.added}, updated ${r.updated}.`); $("sheetPaste").value=""; };
+try{ $("sheetUrl").value = localStorage.getItem("sheetUrl")||""; }catch{}
+$("sheetFetch").onclick = async () => {
+  let u=$("sheetUrl").value.trim(); if(!u) return sheetMsg("Paste the published CSV link first.");
+  u=u.replace(/output=html/,"output=csv"); try{ localStorage.setItem("sheetUrl",u); }catch{}
+  sheetMsg("Fetching…");
+  try{ const res=await fetch(u); if(!res.ok) throw new Error(res.status); const r=importSheet(await res.text());
+       sheetMsg(r.err || `Added ${r.added}, updated ${r.updated}.`); }
+  catch{ sheetMsg("Could not fetch (this page may block outside links). Copy the sheet and use the paste box instead."); }
+};
 
 /* ================= HOUSE TABLE ================= */
 const store = { get(){ try{return JSON.parse(localStorage.getItem("sortedKids")||"[]")}catch{return []} },
