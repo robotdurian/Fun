@@ -264,6 +264,30 @@ function say(text, el){
   });
 }
 
+const STYLE = {
+  normal:{rate:.95,pitch:.65}, whisper:{rate:.82,pitch:.45}, excited:{rate:1.05,pitch:.8}, slow:{rate:.75,pitch:.6}
+};
+// chunks: [{t:"text", s:"style", a:"talk|think"}] spoken back-to-back so it flows like one thought
+function sayChain(chunks, el, hat){
+  const setAnim = c => { if(hat) hat.className = "hat " + (c.a||"talk"); };
+  if(muted || !("speechSynthesis" in window) || !speechSynthesis.getVoices().length){
+    return chunks.reduce((p,c)=>p.then(async()=>{ el.textContent=c.t; setAnim(c); await sleep(Math.min(4500,600+c.t.length*45)); }), Promise.resolve());
+  }
+  speechSynthesis.cancel();
+  return new Promise(res=>{
+    const total = chunks.reduce((n,c)=>n+c.t.length,0);
+    const guard = setTimeout(res, total*130+8000);
+    chunks.forEach((c,i)=>{
+      const u = new SpeechSynthesisUtterance(c.t);
+      if(voice) u.voice = voice;
+      const st = STYLE[c.s||"normal"]; u.rate = st.rate; u.pitch = st.pitch;
+      u.onstart = () => { el.textContent = c.t; setAnim(c); };
+      if(i===chunks.length-1){ u.onend = u.onerror = () => { clearTimeout(guard); res(); }; }
+      speechSynthesis.speak(u);
+    });
+  });
+}
+
 /* ---------- Voice input (optional) ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
@@ -347,24 +371,36 @@ const pickOne = a => a[Math.floor(Math.random()*a.length)];
 const fill = t => t.replace(/\{n\}/g, name);
 async function ceremony(k){
   house = k; show("ceremony"); murmur();
-  const hatEl = $("hatCer"), txt = $("cerText");
-  const mine = answers.filter(a=>a[0]===k), others = answers.filter(a=>a[0]!==k);
-  const second = Object.entries(scores).filter(([x])=>x!==k).sort((a,b)=>b[1]-a[1])[0][0];
-  const quirk = pickOne(others.filter(a=>a[0]===second).concat(others));   // an answer from a different house
-  const lines = [
-    `Hmmmm. ${name}. Oh my. Oh my, oh my. Where do I even begin?`,
-    mine.length ? fill(mine[0][2]) : null,
-    quirk ? fill(quirk[2]) : null,
-    mine.length>1 ? fill(mine[1][2]) : null,
-    `${scores[k]} of your ${QS.length} answers shouted ${H[k].name}, and a little ${H[second].name} is hiding in there too. Don't look at me like that.`,
-    "Hmmmm. Difficult. Very difficult. Hm hm hm.",
-    "Right. I've decided."
-  ].filter(Boolean);
-  for(const l of lines){ hatEl.className = "hat talk"; await say(l, txt); hatEl.className = "hat think"; await sleep(450); }
-  tone(110,1,"sawtooth",.05); await sleep(1000);              // drumroll gap
-  fanfare();
-  hatEl.className = "hat talk";
-  await say(H[k].cheer, txt);
+  const hat = $("hatCer"), txt = $("cerText");
+  const ranked = Object.entries(scores).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const second = ranked.find(x=>x!==k), lowest = ranked[3]===k ? ranked[2] : ranked[3];
+  const mine = shuffle(answers.filter(a=>a[0]===k));
+  const rival = shuffle(answers.filter(a=>a[0]===second));
+  const odd = shuffle(answers.filter(a=>a[0]!==k && a[0]!==second));
+  const C = [];                                   // the monologue, in order
+  const add = (t,s,a) => t && C.push({t:fill(t), s:s||"normal", a:a||"talk"});
+
+  add(pickOne([`Hmmmm… ${name}. Well, well, well. Let me just have a poke around in there…`,
+               `Ooh. Ooh, ${name}. Hold still. Let me rummage about in that head of yours…`]), "slow", "think");
+  if(mine[0]){ add(pickOne(["Now THIS is interesting.","Ooh, I like this bit."])); add(mine[0][2]); }
+  if(rival[0] || odd[0]){
+    const r = rival[0] || odd[0];
+    add(pickOne(["But hold on, hold on…","Hmm, but then…"]), "whisper", "think");
+    add(r[2]);
+    add(`That's a bit ${H[r[0]].name}, isn't it? Hmm. Oh dear. Now I'm doubting myself.`, "whisper", "think");
+  }
+  if(mine[1]){ add(pickOne(["And yet…","Then again…"])); add(mine[1][2]); add("Oh, that pulls me back. But no, no, not yet."); }
+  if(odd[0] && rival[0]) add(odd[0][2]);
+  add(`Let me count. ${scores[k]} for ${H[k].name}… ${scores[second]} for ${H[second].name}… my brim hurts from the maths.`, "whisper", "think");
+  add(scores[lowest]===0 ? `And not one drop of ${H[lowest].name} in you. I checked behind the ears.`
+                          : `As for ${H[lowest].name}, hardly a whisper. I'd be amazed.`, "whisper", "think");
+  if(chosen) add(`And you asked for ${H[k].name} yourself. Who am I to argue with a wizard who knows their own mind?`);
+  add(pickOne(["Hm hm hm. Yes. No. Yes… Oh! I know exactly where to put you.","Right. Right, right, right. I've got it. I've definitely got it."]), "slow", "think");
+  add("Better be…", "slow", "talk");
+  add(H[k].name.toUpperCase()+"!", "excited", "talk");
+
+  const finale = sayChain(C, txt, hat);
+  await finale; fanfare(); await sleep(700);
   save(k); showResult(k);
 }
 function save(k){
